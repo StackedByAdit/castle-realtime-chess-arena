@@ -16,5 +16,20 @@ export class GameManager {
     return gameId;
   }
 
-  
+  handleMove(playerId: string, move: string) {
+    const gameId = this.playerToGame.get(playerId);
+
+    if (!gameId) {  
+      return { success: false, message: "Game not found" };
+    }
+
+    const game = this.games.get(gameId);
+
+    if (!game) {
+      return { success: false, message: "Game not found" };
+    }
+
+    return game.makeMove(playerId, move);
+  }
+
 }
