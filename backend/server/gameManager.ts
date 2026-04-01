@@ -19,7 +19,7 @@ export class GameManager {
   handleMove(playerId: string, move: string) {
     const gameId = this.playerToGame.get(playerId);
 
-    if (!gameId) {  
+    if (!gameId) {
       return { success: false, message: "Game not found" };
     }
 
@@ -32,4 +32,13 @@ export class GameManager {
     return game.makeMove(playerId, move);
   }
 
+  getGameState(playerId: string) {
+    const gameId = this.playerToGame.get(playerId);
+    if (!gameId) return null;
+
+    const game = this.games.get(gameId);
+    if (!game) return null;
+
+    return game.getState();
+  }
 }
