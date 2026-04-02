@@ -51,12 +51,13 @@ export class Game {
         })
     }
 
-    getState(){
+    public getState(){
         return ({
             turn : this.chess.turn(),
             fen : this.chess.fen(),
             isGameOver : this.chess.isGameOver(),
-            timeStamp : this.time
+            timeStamp : this.time,
+            moves : this.chess.history()
         })
     }
 
