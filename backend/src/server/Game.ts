@@ -5,7 +5,7 @@ export class Game {
     private chess: Chess;
     private playerWhite: string;
     private playerBlack: string;
-    private time : number;
+    private time: number;
 
     constructor(playerWhite: string, playerBlack: string) {
         this.playerWhite = playerWhite;
@@ -16,7 +16,7 @@ export class Game {
 
     public makeMove(playerId: string, move: string) {
 
-         if (this.chess.isGameOver()) {
+        if (this.chess.isGameOver()) {
             return {
                 success: false,
                 message: "Game already finished"
@@ -24,6 +24,15 @@ export class Game {
         }
 
         const turn = this.chess.turn();
+
+        console.log({
+            turn,
+            playerId,
+            playerWhite: this.playerWhite,
+            playerBlack: this.playerBlack
+        });
+
+        console.log(this.chess.ascii());
 
         if ((turn == "w" && playerId !== this.playerWhite) ||
             (turn == 'b' && playerId !== this.playerBlack)
@@ -36,28 +45,28 @@ export class Game {
 
         const result = this.chess.move(move);
 
-        if(!result) {
-            return({
-                success : false,
-                message : "Invalid Move"
+        if (!result) {
+            return ({
+                success: false,
+                message: "Invalid Move"
             })
         }
 
-        return({
-            status : true,
-            turn : this.chess.turn(),
-            fen : this.chess.fen(),
-            isGameOver : this.chess.isGameOver()
+        return ({
+            status: true,
+            turn: this.chess.turn(),
+            fen: this.chess.fen(),
+            isGameOver: this.chess.isGameOver()
         })
     }
 
-    public getState(){
+    public getState() {
         return ({
-            turn : this.chess.turn(),
-            fen : this.chess.fen(),
-            isGameOver : this.chess.isGameOver(),
-            timeStamp : this.time,
-            moves : this.chess.history()
+            turn: this.chess.turn(),
+            fen: this.chess.fen(),
+            isGameOver: this.chess.isGameOver(),
+            timeStamp: this.time,
+            moves: this.chess.history()
         })
     }
 
