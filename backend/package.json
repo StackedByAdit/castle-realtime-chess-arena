@@ -13,7 +13,10 @@
   "dependencies": {
     "@types/express": "^5.0.6",
     "chess.js": "^1.4.0",
-    "express": "^5.2.1",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2",
     "typescript": "^6.0.2"
   }
 }
