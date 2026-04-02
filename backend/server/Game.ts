@@ -15,6 +15,14 @@ export class Game {
     }
 
     public makeMove(playerId: string, move: string) {
+
+         if (this.chess.isGameOver()) {
+            return {
+                success: false,
+                message: "Game already finished"
+            };
+        }
+
         const turn = this.chess.turn();
 
         if ((turn == "w" && playerId !== this.playerWhite) ||
@@ -39,6 +47,7 @@ export class Game {
             status : true,
             turn : this.chess.turn(),
             fen : this.chess.fen(),
+            isGameOver : this.chess.isGameOver()
         })
     }
 
