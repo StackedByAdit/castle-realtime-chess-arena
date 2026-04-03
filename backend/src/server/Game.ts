@@ -25,14 +25,14 @@ export class Game {
 
         const turn = this.chess.turn();
 
-        console.log({
-            turn,
-            playerId,
-            playerWhite: this.playerWhite,
-            playerBlack: this.playerBlack
-        });
+        // console.log({
+        //     turn,
+        //     playerId,
+        //     playerWhite: this.playerWhite,
+        //     playerBlack: this.playerBlack
+        // });
 
-        console.log(this.chess.ascii());
+        // console.log(this.chess.ascii());
 
         if ((turn == "w" && playerId !== this.playerWhite) ||
             (turn == 'b' && playerId !== this.playerBlack)
@@ -53,7 +53,7 @@ export class Game {
         }
 
         return ({
-            status: true,
+            success: true,
             turn: this.chess.turn(),
             fen: this.chess.fen(),
             isGameOver: this.chess.isGameOver()
@@ -69,5 +69,9 @@ export class Game {
             moves: this.chess.history()
         })
     }
+
+    public getPlayers(): string[] {
+  return [this.playerWhite, this.playerBlack];
+}
 
 }
