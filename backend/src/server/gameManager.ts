@@ -3,9 +3,13 @@ import { Game } from "./Game.js"
 export class GameManager {
   private games = new Map<string, Game>();
   private playerToGame = new Map<string, string>();
+  private waitingPlayers: string[] = [];
+  private ratings = new Map<string, number>();
+
+
 
   createGame(player1: string, player2: string) {
-    const gameId = Math.random().toString();
+    const gameId = Math.random().toString(36).slice(2); 
 
     const game = new Game(player1, player2);
 

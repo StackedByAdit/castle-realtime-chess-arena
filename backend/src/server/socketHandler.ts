@@ -1,10 +1,10 @@
 import { WebSocket, WebSocketServer } from "ws";
 import { GameManager } from "./gameManager.js";
 
-
 const wss = new WebSocketServer({ port: 6969 });
 
 const gameManager = new GameManager();
+
 
 const clients = new Map<string, WebSocket>();
 const queue: string[] = [];
@@ -39,10 +39,13 @@ wss.on("connection", (socket: WebSocket) => {
             const gameId = gameManager.createGame(player1, player2);
 
             console.log("Game created:", gameId);
+
+            
+
+            
         }
 
 
-        const gameId = gameManager.getGameState
     })
 })
 
