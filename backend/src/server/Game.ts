@@ -1,13 +1,14 @@
 import { Chess } from "chess.js";
+import type { Player } from "./types.js";
 
 export class Game {
 
     private chess: Chess;
-    private playerWhite: string;
-    private playerBlack: string;
+    private playerWhite: Player;
+    private playerBlack: Player;
     private time: number;
 
-    constructor(playerWhite: string, playerBlack: string) {
+    constructor(playerWhite: Player, playerBlack: Player) {
         this.playerWhite = playerWhite;
         this.playerBlack = playerBlack;
         this.chess = new Chess();
@@ -34,8 +35,8 @@ export class Game {
 
         // console.log(this.chess.ascii());
 
-        if ((turn == "w" && playerId !== this.playerWhite) ||
-            (turn == 'b' && playerId !== this.playerBlack)
+        if ((turn == "w" && playerId !== this.playerWhite.id) ||
+            (turn == 'b' && playerId !== this.playerBlack.id)
         ) {
             return ({
                 success: false,
@@ -70,7 +71,7 @@ export class Game {
         })
     }
 
-    public getPlayers(): string[] {
+    public getPlayers(): Player[] {
   return [this.playerWhite, this.playerBlack];
 }
 
