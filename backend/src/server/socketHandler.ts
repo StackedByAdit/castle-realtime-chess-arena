@@ -33,19 +33,6 @@ wss.on("connection", (socket: WebSocket) => {
 
         // for testing: auto-create game when 2 players connect
         // will remove it once i add the elo match making logic
-        if (queue.length >= 2) {
-            const player1 = queue.shift()!;
-            const player2 = queue.shift()!;
-
-            const gameId = gameManager.createGame(player1, player2);
-
-            console.log("Game created:", gameId);
-
-            
-
-            
-        }
-
 
     })
 })
