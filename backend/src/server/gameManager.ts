@@ -1,21 +1,21 @@
 import { Game } from "./Game.js"
+import type { Player } from "./types.js";
 
 export class GameManager {
   private games = new Map<string, Game>();
   private playerToGame = new Map<string, string>();
   private waitingPlayers: string[] = [];
-  private ratings = new Map<string, number>();
+  private players = new Map<string, Player>();
 
 
-
-  createGame(player1: string, player2: string) {
-    const gameId = Math.random().toString(36).slice(2); 
+  createGame(player1: Player, player2: Player) {
+    const gameId = Math.random().toString(36).slice(2);
 
     const game = new Game(player1, player2);
 
     this.games.set(gameId, game);
-    this.playerToGame.set(player1, gameId);
-    this.playerToGame.set(player2, gameId);
+    this.playerToGame.set(player1.id, gameId);
+    this.playerToGame.set(player2.id, gameId);
 
     return gameId;
   }
@@ -46,7 +46,7 @@ export class GameManager {
     return game.getState();
   }
 
-  getPlayersInGame(playerId: string): string[] {
+  getPlayersInGame(playerId: string): Player[] {
     const gameId = this.playerToGame.get(playerId);
     if (!gameId) return [];
 
