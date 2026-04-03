@@ -39,7 +39,8 @@ export class GameManager {
     let smallestDiff = Infinity;
 
     for (let i = 0; i < this.waitingPlayers.length; i++) {
-      const opponentId = this.waitingPlayers[i]!; // can this be a problem that before any player is added to waiting players, the array will be empty, so everything is undefined. ive forced ! this to remove undefined error. check it once testing
+      const opponentId = this.waitingPlayers[i];
+      if (!opponentId) continue; // can this be a problem that before any player is added to waiting players, the array will be empty, so everything is undefined. ive forced ! this to remove undefined error. check it once testing
       const opponent = this.players.get(opponentId)!; // object
 
       const diff = Math.abs(player.rating - opponent.rating);
@@ -93,7 +94,7 @@ export class GameManager {
     return game.getState();
   }
 
-  getPlayersInGame(playerId: string): Player[] { 
+  getPlayersInGame(playerId: string): Player[] {
     const gameId = this.playerToGame.get(playerId);
     if (!gameId) return [];
 
