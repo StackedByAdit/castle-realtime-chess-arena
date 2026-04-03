@@ -41,4 +41,14 @@ export class GameManager {
 
     return game.getState();
   }
+
+  getPlayersInGame(playerId: string): string[] {
+    const gameId = this.playerToGame.get(playerId);
+    if (!gameId) return [];
+
+    const game = this.games.get(gameId);
+    if (!game) return [];
+
+    return game.getPlayers();
+  }
 }
