@@ -1,6 +1,8 @@
 import { Game } from "./Game.js"
 import type { Player } from "./types.js";
 
+const DEFAULT_RATING = 400;
+
 export class GameManager {
   private games = new Map<string, Game>();
   private playerToGame = new Map<string, string>();
@@ -28,7 +30,7 @@ export class GameManager {
 
     this.players.set(playerId, this.players.get(playerId) || {
       id: playerId,
-      rating: 1200
+      rating: DEFAULT_RATING
     });
 
     if (this.waitingPlayers.includes(playerId)) {
