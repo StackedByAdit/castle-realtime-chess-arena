@@ -1,8 +1,6 @@
 import { Game } from "./Game.js"
 import type { Player } from "./types.js";
 
-
-
 export class GameManager {
   private games = new Map<string, Game>();
   private playerToGame = new Map<string, string>();
@@ -12,7 +10,6 @@ export class GameManager {
 
   createGame(player1Id: string, player2Id: string) {
     const gameId = Math.random().toString(36).slice(2);
-
 
     const player1 = this.players.get(player1Id)!;
     const player2 = this.players.get(player2Id)!; //they are player objects 
@@ -40,7 +37,7 @@ export class GameManager {
 
     for (let i = 0; i < this.waitingPlayers.length; i++) {
       const opponentId = this.waitingPlayers[i];
-      if (!opponentId) continue; // can this be a problem that before any player is added to waiting players, the array will be empty, so everything is undefined. ive forced ! this to remove undefined error. check it once testing
+      if (!opponentId) continue;
       const opponent = this.players.get(opponentId)!; // object
 
       const diff = Math.abs(player.rating - opponent.rating);
@@ -81,7 +78,21 @@ export class GameManager {
       return { success: false, message: "Game not found" };
     }
 
-    return game.makeMove(playerId, move);
+    const result: any = game.makeMove(playerId, move);
+
+    if (result.success && result.isGameOver) {
+      const players = game.getPlayers();
+
+      const ratingUpdate = this.updateRatings(
+        players[0]!.id,
+        players[1]!.id,
+        result.winner
+      );
+
+      result.ratings = ratingUpdate;
+    }
+
+    return result;
   }
 
   getGameState(playerId: string) {
@@ -102,5 +113,47 @@ export class GameManager {
     if (!game) return [];
 
     return game.getPlayers();
+  }
+
+  private updateRatings(
+    player1Id: string,
+    player2Id: string,
+    winner: string | null
+  ) {
+    const K = 32;
+
+    const p1 = this.players.get(player1Id)!;
+    const p2 = this.players.get(player2Id)!;
+
+    const r1 = p1.rating;
+    const r2 = p2.rating;
+
+    const expected1 = 1 / (1 + Math.pow(10, (r2 - r1) / 400));
+    const expected2 = 1 / (1 + Math.pow(10, (r1 - r2) / 400));
+
+    let score1 = 0;
+    let score2 = 0;
+
+    if (winner === player1Id) {
+      score1 = 1;
+      score2 = 0;
+    } else if (winner === player2Id) {
+      score1 = 0;
+      score2 = 1;
+    } else {
+      score1 = 0.5;
+      score2 = 0.5;
+    }
+
+    const newR1 = Math.round(r1 + K * (score1 - expected1));
+    const newR2 = Math.round(r2 + K * (score2 - expected2));
+
+    p1.rating = newR1;
+    p2.rating = newR2;
+
+    return {
+      [player1Id]: newR1,
+      [player2Id]: newR2
+    };
   }
 }
