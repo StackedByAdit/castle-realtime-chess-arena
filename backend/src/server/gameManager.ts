@@ -8,6 +8,7 @@ export class GameManager {
   private players = new Map<string, Player>();
 
 
+
   createGame(player1Id: string, player2Id: string) {
     const gameId = Math.random().toString(36).slice(2);
 
@@ -30,7 +31,15 @@ export class GameManager {
       rating: 1200
     });
 
-    const player = this.players.get(playerId)!; // this will be an object
+    if (this.waitingPlayers.includes(playerId)) {
+      return { status: "waiting" };
+    }
+
+    if (this.playerToGame.has(playerId)) {
+      return { status: "waiting" };
+    }
+
+    const player = this.players.get(playerId)!;
 
     let bestIndex = -1;
     let smallestDiff = Infinity;
@@ -38,7 +47,8 @@ export class GameManager {
     for (let i = 0; i < this.waitingPlayers.length; i++) {
       const opponentId = this.waitingPlayers[i];
       if (!opponentId) continue;
-      const opponent = this.players.get(opponentId)!; // object
+
+      const opponent = this.players.get(opponentId)!;
 
       const diff = Math.abs(player.rating - opponent.rating);
 
