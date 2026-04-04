@@ -17,56 +17,66 @@ export class Game {
 
     public makeMove(playerId: string, move: string) {
 
-    if (this.chess.isGameOver()) {
+        if (this.chess.isGameOver()) {
+            return {
+                success: false,
+                message: "Game already finished"
+            };
+        }
+
+        const turn = this.chess.turn();
+
+        if (
+            (turn === "w" && playerId !== this.playerWhite.id) ||
+            (turn === "b" && playerId !== this.playerBlack.id)
+        ) {
+            return {
+                success: false,
+                message: "Wait for Opponent to make a move"
+            };
+        }
+
+        try {
+            this.chess.move(move);
+        } catch (e: any) {
+            console.log("Invalid move error:", e.message);
+
+            return {
+                success: false,
+                message: "Invalid move"
+            };
+        }
+
+        const isGameOver = this.chess.isGameOver();
+
+        let winner: string | null = null;
+        let reason: string | null = null;
+
+        if (this.chess.isCheckmate()) { // all the ways a game can end
+            winner =
+                this.chess.turn() === "w"
+                    ? this.playerBlack.id
+                    : this.playerWhite.id;
+            reason = "checkmate";
+        } else if (this.chess.isStalemate()) {
+            reason = "stalemate";
+        } else if (this.chess.isThreefoldRepetition()) {
+            reason = "threefold repetition";
+        } else if (this.chess.isInsufficientMaterial()) {
+            reason = "insufficient material";
+        } else if (this.chess.isDraw()) {
+            reason = "draw";
+        }
+
         return {
-            success: false,
-            message: "Game already finished"
+            success: true,
+            turn: this.chess.turn(),
+            fen: this.chess.fen(),
+            isGameOver,
+            winner,
+            reason
         };
     }
-
-    const turn = this.chess.turn();
-
-    if (
-        (turn === "w" && playerId !== this.playerWhite.id) ||
-        (turn === "b" && playerId !== this.playerBlack.id)
-    ) {
-        return {
-            success: false,
-            message: "Wait for Opponent to make a move"
-        };
-    }
-
-    try {
-        this.chess.move(move);
-    } catch (e: any) {
-        console.log("Invalid move error:", e.message);
-
-        return {
-            success: false,
-            message: "Invalid move"
-        };
-    }
-
-    const isGameOver = this.chess.isGameOver();
-
-    let winner: string | null = null;
-
-    if (this.chess.isCheckmate()) {
-        
-        winner =
-            this.chess.turn() === "w"
-                ? this.playerBlack.id
-                : this.playerWhite.id;
-    }
-
-    return {
-        success: true,
-        turn: this.chess.turn(),
-        fen: this.chess.fen(),
-        isGameOver,
-        winner
-    };
-}
 
     public getState() {
         return ({
