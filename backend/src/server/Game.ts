@@ -44,13 +44,18 @@ export class Game {
             })
         }
 
-        const result = this.chess.move(move);
+        let result;
+        try {
+            result = this.chess.move(move);
+        } catch (e : any) {
 
-        if (!result) {
-            return ({
+            console.log("Invalid move error:", e.message);
+
+            return {
                 success: false,
-                message: "Invalid Move"
-            })
+                message: "Invalid move"
+            };
+
         }
 
         return ({
@@ -72,7 +77,7 @@ export class Game {
     }
 
     public getPlayers(): Player[] {
-  return [this.playerWhite, this.playerBlack];
-}
+        return [this.playerWhite, this.playerBlack];
+    }
 
 }
