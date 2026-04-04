@@ -36,8 +36,11 @@ export class Game {
         const now = Date.now();
         const diff = Math.floor((now - this.lastMoveTime) / 1000);
 
-        if (turn === "w") this.whiteTime -= diff;
-        else this.blackTime -= diff;
+        if (turn === "w") {
+            this.whiteTime = Math.max(0, this.whiteTime - diff);
+        } else {
+            this.blackTime = Math.max(0, this.blackTime - diff);
+        }
 
         this.lastMoveTime = now;
 
@@ -72,8 +75,8 @@ export class Game {
             return { success: false, message: "Invalid move" };
         }
 
-        let isGameOver = this.chess.isGameOver();
-
+        let isGameOver = this.chess.isGameOver() || winner !== null;
+        
         if (this.chess.isCheckmate()) {
             winner =
                 this.chess.turn() === "w"
@@ -104,13 +107,15 @@ export class Game {
     }
 
     public getState() {
-        return ({
+        return {
             turn: this.chess.turn(),
             fen: this.chess.fen(),
             isGameOver: this.chess.isGameOver(),
             timeStamp: this.time,
-            moves: this.chess.history()
-        })
+            moves: this.chess.history(),
+            whiteTime: this.whiteTime,
+            blackTime: this.blackTime
+        };
     }
 
     public getPlayers(): Player[] {
