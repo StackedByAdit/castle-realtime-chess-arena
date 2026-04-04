@@ -130,4 +130,35 @@ wss.on("connection", (socket: WebSocket) => {
         }
     });
 
+     socket.on("close", () => {
+        const playerId = socketToPlayer.get(socket);
+        if (!playerId) return;
+
+        console.log("Player disconnected:", playerId);
+
+        playerToSocket.delete(playerId);
+        socketToPlayer.delete(socket);
+
+         const timeout = setTimeout(() => {
+            console.log("Player did NOT reconnect:", playerId);
+
+            const players = gameManager.getPlayersInGame(playerId);
+
+            const opponent = players.find(p => p.id !== playerId);
+            if (!opponent) return;
+
+            const opponentSocket = playerToSocket.get(opponent.id);
+
+            opponentSocket?.send(JSON.stringify({
+                type: "GAME_OVER",
+                payload: {
+                    winner: opponent.id,
+                    reason: "opponent_disconnected"
+                }
+            }));
+
+        }, 30000);
+
+        disconnectTimers.set(playerId, timeout);
+    });
 });
