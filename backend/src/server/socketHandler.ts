@@ -53,7 +53,6 @@ wss.on("connection", (socket: WebSocket) => {
                 }));
                 return;
             }
-
             const players = gameManager.getPlayersInGame(socketId);
 
             players.forEach((player) => {
