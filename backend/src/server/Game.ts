@@ -7,6 +7,9 @@ export class Game {
     private playerWhite: Player;
     private playerBlack: Player;
     private time: number;
+    private whiteTime = 300;
+    private blackTime = 300;
+    private lastMoveTime = Date.now();
 
     constructor(playerWhite: Player, playerBlack: Player) {
         this.playerWhite = playerWhite;
@@ -18,10 +21,7 @@ export class Game {
     public makeMove(playerId: string, move: string) {
 
         if (this.chess.isGameOver()) {
-            return {
-                success: false,
-                message: "Game already finished"
-            };
+            return { success: false, message: "Game already finished" };
         }
 
         const turn = this.chess.turn();
@@ -30,29 +30,51 @@ export class Game {
             (turn === "w" && playerId !== this.playerWhite.id) ||
             (turn === "b" && playerId !== this.playerBlack.id)
         ) {
+            return { success: false, message: "Wait for opponent" };
+        }
+
+        const now = Date.now();
+        const diff = Math.floor((now - this.lastMoveTime) / 1000);
+
+        if (turn === "w") this.whiteTime -= diff;
+        else this.blackTime -= diff;
+
+        this.lastMoveTime = now;
+
+        let winner: string | null = null;
+        let reason: string | null = null;
+
+        if (this.whiteTime <= 0) {
+            winner = this.playerBlack.id;
+            reason = "timeout";
+        } else if (this.blackTime <= 0) {
+            winner = this.playerWhite.id;
+            reason = "timeout";
+        }
+
+        if (winner) {
             return {
-                success: false,
-                message: "Wait for Opponent to make a move"
+                success: true,
+                isGameOver: true,
+                winner,
+                reason,
+                fen: this.chess.fen(),
+                turn: this.chess.turn(),
+                whiteTime: this.whiteTime,
+                blackTime: this.blackTime,
+                pgn: this.chess.pgn()
             };
         }
 
         try {
             this.chess.move(move);
-        } catch (e: any) {
-            console.log("Invalid move error:", e.message);
-
-            return {
-                success: false,
-                message: "Invalid move"
-            };
+        } catch {
+            return { success: false, message: "Invalid move" };
         }
 
-        const isGameOver = this.chess.isGameOver();
+        let isGameOver = this.chess.isGameOver();
 
-        let winner: string | null = null;
-        let reason: string | null = null;
-
-        if (this.chess.isCheckmate()) { // all the ways a game can end
+        if (this.chess.isCheckmate()) {
             winner =
                 this.chess.turn() === "w"
                     ? this.playerBlack.id
@@ -74,7 +96,10 @@ export class Game {
             fen: this.chess.fen(),
             isGameOver,
             winner,
-            reason
+            reason,
+            whiteTime: this.whiteTime,
+            blackTime: this.blackTime,
+            pgn: this.chess.pgn()
         };
     }
 
