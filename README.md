@@ -86,16 +86,6 @@ npm run dev
 
 ---
 
-## 🌐 Environment Variables
-
-```env
-MONGO_URI=your_mongodb_uri
-JWT_SECRET=your_secret_key
-PORT=5000
-```
-
----
-
 ## 📁 Project Structure
 
 ```
