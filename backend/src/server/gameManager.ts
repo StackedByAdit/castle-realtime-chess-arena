@@ -1,5 +1,5 @@
 import { Game } from "./Game.js"
-import type { Player } from "./types.js";
+import type { CompletedGame, MoveResult, Player } from "./types.js";
 
 const DEFAULT_RATING = 400;
 
@@ -9,9 +9,7 @@ export class GameManager {
   private waitingPlayers: string[] = [];
   private players = new Map<string, Player>();
 
-  private completedGames = new Map<string, string>();
-
-
+  private completedGames = new Map<string, CompletedGame>();
 
   createGame(player1Id: string, player2Id: string) {
     const gameId = Math.random().toString(36).slice(2);
@@ -92,19 +90,29 @@ export class GameManager {
       return { success: false, message: "Game not found" };
     }
 
-    const result: any = game.makeMove(playerId, move);
+    const result: MoveResult = game.makeMove(playerId, move);
 
-    if (result.success && result.isGameOver) {
+    if (result.success === true && result.isGameOver) {
       const players = game.getPlayers();
 
       const ratingUpdate = this.updateRatings(
         players[0]!.id,
         players[1]!.id,
-        result.winner
+        result.winner ?? null
       );
 
       result.ratings = ratingUpdate;
-      this.completedGames.set(gameId, result.pgn);
+      this.completedGames.set(gameId, {
+        gameId,
+        players,
+        pgn: result.pgn,
+        moves: game.getMoves(),
+        createdAt: Date.now(),
+        result: {
+          winner: result.winner,
+          reason: result.reason
+        }
+      });
 
       this.games.delete(gameId);
       this.playerToGame.delete(players[0]!.id);
@@ -133,6 +141,7 @@ export class GameManager {
 
     return game.getPlayers();
   }
+
 
   private updateRatings(
     player1Id: string,
