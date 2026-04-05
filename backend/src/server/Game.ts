@@ -1,5 +1,5 @@
 import { Chess } from "chess.js";
-import type { Player } from "./types.js";
+import type { MoveResult, Player } from "./types.js";
 
 export class Game {
 
@@ -18,7 +18,11 @@ export class Game {
         this.time = Date.now();
     }
 
-    public makeMove(playerId: string, move: string) {
+    public getMoves() {
+        return this.chess.history({ verbose: true });
+    }
+
+    public makeMove(playerId: string, move: string) : MoveResult {
 
         if (this.chess.isGameOver()) {
             return { success: false, message: "Game already finished" };
@@ -76,7 +80,7 @@ export class Game {
         }
 
         let isGameOver = this.chess.isGameOver() || winner !== null;
-        
+
         if (this.chess.isCheckmate()) {
             winner =
                 this.chess.turn() === "w"
@@ -112,7 +116,7 @@ export class Game {
             fen: this.chess.fen(),
             isGameOver: this.chess.isGameOver(),
             timeStamp: this.time,
-            moves: this.chess.history(),
+            moves: this.getMoves(),
             whiteTime: this.whiteTime,
             blackTime: this.blackTime
         };
