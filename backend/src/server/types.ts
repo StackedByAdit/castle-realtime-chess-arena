@@ -14,3 +14,11 @@ export type CompletedGame = {
     reason: string | null;
   };
 };
+
+type Move = {
+  color: string;
+  from: string;
+  to: string;
+  piece: string;
+  san: string;
+};
