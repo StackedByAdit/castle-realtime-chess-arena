@@ -68,54 +68,53 @@ wss.on("connection", (socket: WebSocket) => {
         }
 
         if (message.type === "MOVE") {
-            const playerId = socketToPlayer.get(socket);
-            if (!playerId) return;
+    const playerId = socketToPlayer.get(socket);
+    if (!playerId) return;
 
-            const move = message.payload.move;
+    const players = gameManager.getPlayersInGame(playerId);
 
-            const result = gameManager.handleMove(playerId, move);
+    const move = message.payload.move;
+    const result = gameManager.handleMove(playerId, move);
 
-            if (!result.success) {
-                socket.send(JSON.stringify({
-                    type: "ERROR",
-                    payload: result
-                }));
-                return;
+    if (!result.success) {
+        socket.send(JSON.stringify({
+            type: "ERROR",
+            payload: result
+        }));
+        return;
+    }
+
+    players.forEach((player) => {
+        const client = playerToSocket.get(player.id);
+
+        client?.send(JSON.stringify({
+            type: "GAME_UPDATE",
+            payload: {
+                fen: result.fen,
+                turn: result.turn,
+                isGameOver: result.isGameOver,
+                whiteTime: result.whiteTime,
+                blackTime: result.blackTime
             }
+        }));
+    });
 
-            const players = gameManager.getPlayersInGame(playerId);
+    if (result.isGameOver) {
+        players.forEach((player) => {
+            const client = playerToSocket.get(player.id);
 
-            players.forEach((player) => {
-                const client = playerToSocket.get(player.id);
-
-                client?.send(JSON.stringify({
-                    type: "GAME_UPDATE",
-                    payload: {
-                        fen: result.fen,
-                        turn: result.turn,
-                        isGameOver: result.isGameOver,
-                        whiteTime: result.whiteTime,
-                        blackTime: result.blackTime
-                    }
-                }));
-            });
-
-            if (result.isGameOver) {
-                players.forEach((player) => {
-                    const client = playerToSocket.get(player.id);
-
-                    client?.send(JSON.stringify({
-                        type: "GAME_OVER",
-                        payload: {
-                            winner: result.winner,
-                            reason: result.reason,
-                            ratings: result.ratings,
-                            pgn: result.pgn
-                        }
-                    }));
-                });
-            }
-        }
+            client?.send(JSON.stringify({
+                type: "GAME_OVER",
+                payload: {
+                    winner: result.winner,
+                    reason: result.reason,
+                    ratings: result.ratings,
+                    pgn: result.pgn
+                }
+            }));
+        });
+    }
+}
 
         if (message.type === "GET_STATE") {
             const playerId = socketToPlayer.get(socket);
@@ -128,20 +127,33 @@ wss.on("connection", (socket: WebSocket) => {
                 payload: state
             }));
         }
+
+        if (message.type === "GET_REPLAY") {
+            const gameId = message.payload.gameId;
+
+            const game = gameManager.getReplay(gameId);
+
+            socket.send(JSON.stringify({
+                type: "REPLAY_DATA",
+                payload: game
+            }));
+        }
     });
 
-     socket.on("close", () => {
+    socket.on("close", () => {
         const playerId = socketToPlayer.get(socket);
         if (!playerId) return;
 
         console.log("Player disconnected:", playerId);
 
+        // remove socket mappings
         playerToSocket.delete(playerId);
         socketToPlayer.delete(socket);
 
-         const timeout = setTimeout(() => {
+        const timeout = setTimeout(() => {
             console.log("Player did NOT reconnect:", playerId);
 
+            // get players BEFORE deleting game
             const players = gameManager.getPlayersInGame(playerId);
 
             const opponent = players.find(p => p.id !== playerId);
@@ -156,6 +168,10 @@ wss.on("connection", (socket: WebSocket) => {
                     reason: "opponent_disconnected"
                 }
             }));
+
+            gameManager.handleDisconnect(playerId);
+
+            disconnectTimers.delete(playerId);
 
         }, 30000);
 
