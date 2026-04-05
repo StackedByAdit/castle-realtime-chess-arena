@@ -1,6 +1,6 @@
 export type Player = {
-    id : string;
-    rating : number;
+  id: string;
+  rating: number;
 }
 
 export type CompletedGame = {
@@ -22,3 +22,21 @@ export type Move = {
   piece: string;
   san: string;
 };
+
+export type MoveResult =
+  | {
+      success: false;
+      message: string;
+    }
+  | {
+      success: true;
+      isGameOver: boolean;
+      winner: string | null;
+      reason: string | null;
+      fen: string;
+      turn: string;
+      whiteTime: number;
+      blackTime: number;
+      pgn: string;
+      ratings?: Record<string, number>;
+    };
