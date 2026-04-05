@@ -7,7 +7,7 @@ export type CompletedGame = {
   gameId: string;
   players: Player[];
   pgn: string;
-  moves: string[];
+  moves: Move[];
   createdAt: number;
   result: {
     winner: string | null;
@@ -15,7 +15,7 @@ export type CompletedGame = {
   };
 };
 
-type Move = {
+export type Move = {
   color: string;
   from: string;
   to: string;
