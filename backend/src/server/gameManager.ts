@@ -176,4 +176,7 @@ export class GameManager {
     };
   }
 
+  getReplay(gameId: string) {
+    return this.completedGames.get(gameId);
+  }
 }
