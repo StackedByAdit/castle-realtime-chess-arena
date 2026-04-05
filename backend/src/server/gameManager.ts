@@ -142,6 +142,22 @@ export class GameManager {
     return game.getPlayers();
   }
 
+  handleDisconnect(playerId: string) {
+    const gameId = this.playerToGame.get(playerId);
+    if (!gameId) return;
+
+    const game = this.games.get(gameId);
+    if (!game) return;
+
+    const players = game.getPlayers();
+    const opponent = players.find(p => p.id !== playerId);
+
+    this.games.delete(gameId);
+    this.playerToGame.delete(playerId);
+    if (opponent) {
+      this.playerToGame.delete(opponent.id);
+    }
+  }
 
   private updateRatings(
     player1Id: string,
