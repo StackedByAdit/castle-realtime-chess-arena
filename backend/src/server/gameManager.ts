@@ -9,6 +9,8 @@ export class GameManager {
   private waitingPlayers: string[] = [];
   private players = new Map<string, Player>();
 
+  private completedGames = new Map<string, string>();
+
 
 
   createGame(player1Id: string, player2Id: string) {
@@ -102,6 +104,11 @@ export class GameManager {
       );
 
       result.ratings = ratingUpdate;
+      this.completedGames.set(gameId, result.pgn);
+
+      this.games.delete(gameId);
+      this.playerToGame.delete(players[0]!.id);
+      this.playerToGame.delete(players[1]!.id);
     }
 
     return result;
@@ -168,4 +175,5 @@ export class GameManager {
       [player2Id]: newR2
     };
   }
+
 }
