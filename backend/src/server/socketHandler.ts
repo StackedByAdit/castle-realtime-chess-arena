@@ -9,6 +9,24 @@ const playerToSocket = new Map<string, WebSocket>();
 const socketToPlayer = new Map<WebSocket, string>();
 const disconnectTimers = new Map<string, NodeJS.Timeout>();
 
+gameManager.setTimeoutHandler((gameId, winnerId, reason) => {
+    const replay = gameManager.getReplay(gameId);
+    if (!replay) return;
+
+    replay.players.forEach((player) => {
+        const client = playerToSocket.get(player.id);
+
+        client?.send(JSON.stringify({
+            type: "GAME_OVER",
+            payload: {
+                winner: winnerId,
+                reason,
+                ratings: null
+            }
+        }));
+    });
+});
+
 wss.on("connection", (socket: WebSocket) => {
 
     console.log("New socket connected");
@@ -16,7 +34,7 @@ wss.on("connection", (socket: WebSocket) => {
     socket.on("message", (data) => {
         const message = JSON.parse(data.toString());
 
-        if (message.type === "JOIN") {  // frintend will send type and payload //its like custom message contract
+        if (message.type === "JOIN") {
             const playerId = message.playerId;
 
             playerToSocket.set(playerId, socket);
@@ -50,6 +68,13 @@ wss.on("connection", (socket: WebSocket) => {
                 }));
             }
 
+            if (matchResult.status === "in_game") {
+                socket.send(JSON.stringify({
+                    type: "WAITING",
+                    message: "Already in a game..."
+                }));
+            }
+
             if (matchResult.status === "matched" && "players" in matchResult) {
                 const players = matchResult.players;
 
@@ -76,44 +101,46 @@ wss.on("connection", (socket: WebSocket) => {
     const move = message.payload.move;
     const result = gameManager.handleMove(playerId, move);
 
-    if (!result.success) {
-        socket.send(JSON.stringify({
-            type: "ERROR",
-            payload: result
-        }));
-        return;
-    }
+if (!result.success) {
+    socket.send(JSON.stringify({
+        type: "ERROR",
+        payload: result
+    }));
+    return;
+}
 
+const successResult = result;
+
+players.forEach((player) => {
+    const client = playerToSocket.get(player.id);
+
+    client?.send(JSON.stringify({
+        type: "GAME_UPDATE",
+        payload: {
+            fen: successResult.fen,
+            turn: successResult.turn,
+            isGameOver: successResult.isGameOver,
+            whiteTime: successResult.whiteTime,
+            blackTime: successResult.blackTime
+        }
+    }));
+});
+
+if (successResult.isGameOver) {
     players.forEach((player) => {
         const client = playerToSocket.get(player.id);
 
         client?.send(JSON.stringify({
-            type: "GAME_UPDATE",
+            type: "GAME_OVER",
             payload: {
-                fen: result.fen,
-                turn: result.turn,
-                isGameOver: result.isGameOver,
-                whiteTime: result.whiteTime,
-                blackTime: result.blackTime
+                winner: successResult.winner,
+                reason: successResult.reason,
+                ratings: successResult.ratings,
+                pgn: successResult.pgn
             }
         }));
     });
-
-    if (result.isGameOver) {
-        players.forEach((player) => {
-            const client = playerToSocket.get(player.id);
-
-            client?.send(JSON.stringify({
-                type: "GAME_OVER",
-                payload: {
-                    winner: result.winner,
-                    reason: result.reason,
-                    ratings: result.ratings,
-                    pgn: result.pgn
-                }
-            }));
-        });
-    }
+}
 }
 
         if (message.type === "GET_STATE") {
@@ -146,14 +173,12 @@ wss.on("connection", (socket: WebSocket) => {
 
         console.log("Player disconnected:", playerId);
 
-        // remove socket mappings
         playerToSocket.delete(playerId);
         socketToPlayer.delete(socket);
 
         const timeout = setTimeout(() => {
             console.log("Player did NOT reconnect:", playerId);
 
-            // get players BEFORE deleting game
             const players = gameManager.getPlayersInGame(playerId);
 
             const opponent = players.find(p => p.id !== playerId);
@@ -169,7 +194,7 @@ wss.on("connection", (socket: WebSocket) => {
                 }
             }));
 
-            gameManager.handleDisconnect(playerId);
+            gameManager.handleDisconnect(playerId); 
 
             disconnectTimers.delete(playerId);
 
