@@ -10,12 +10,37 @@ export class Game {
     private whiteTime = 300;
     private blackTime = 300;
     private lastMoveTime = Date.now();
+    private timerInterval: NodeJS.Timeout | null = null;
 
-    constructor(playerWhite: Player, playerBlack: Player) {
+    constructor(playerWhite: Player, playerBlack: Player, onTimeout: (winnerId: string, loserId: string) => void) {
         this.playerWhite = playerWhite;
         this.playerBlack = playerBlack;
         this.chess = new Chess();
         this.time = Date.now();
+
+        this.timerInterval = setInterval(() => {
+            if (this.chess.isGameOver()) {
+                this.stopTimer();
+                return;
+            }
+
+            const now = Date.now();
+            const elapsed = Math.floor((now - this.lastMoveTime) / 1000);
+            const turn = this.chess.turn();
+
+            if (turn === "w" && this.whiteTime - elapsed <= 0) {
+                this.whiteTime = 0;
+                this.stopTimer();
+                onTimeout(this.playerWhite.id, this.playerBlack.id);
+            }
+        }, 1000);
+    }
+
+    public stopTimer() {
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
     }
 
     public getMoves() {
@@ -60,6 +85,7 @@ export class Game {
         }
 
         if (winner) {
+            this.stopTimer(); 
             return {
                 success: true,
                 isGameOver: true,
@@ -97,6 +123,10 @@ export class Game {
             reason = "draw";
         }
 
+        if (isGameOver) {
+            this.stopTimer();
+        }
+
         return {
             success: true,
             turn: this.chess.turn(),
@@ -111,14 +141,17 @@ export class Game {
     }
 
     public getState() {
+        const elapsed = Math.floor((Date.now() - this.lastMoveTime) / 1000);
+        const turn = this.chess.turn();
+
         return {
-            turn: this.chess.turn(),
+            turn,
             fen: this.chess.fen(),
             isGameOver: this.chess.isGameOver(),
             timeStamp: this.time,
             moves: this.getMoves(),
-            whiteTime: this.whiteTime,
-            blackTime: this.blackTime
+            whiteTime: turn === "w" ? Math.max(0, this.whiteTime - elapsed) : this.whiteTime,
+            blackTime: turn === "b" ? Math.max(0, this.blackTime - elapsed) : this.blackTime
         };
     }
 
