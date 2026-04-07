@@ -1,17 +1,17 @@
 import { Game } from "./Game.js"
-import type { CompletedGame, MoveResult, Player } from "./types.js";
+import type { ChatMessage, CompletedGame, GameRoom, MoveResult, Player } from "./types.js";
 
 const DEFAULT_RATING = 400;
 
 export class GameManager {
-  private games = new Map<string, Game>();
+  private games = new Map<string, GameRoom>();
   private playerToGame = new Map<string, string>();
+  private spectatorToGame = new Map<string, string>();
   private waitingPlayers: string[] = [];
   private players = new Map<string, Player>();
 
   private completedGames = new Map<string, CompletedGame>();
 
-  // callback so socketHandler can push GAME_OVER when the real-time timer fires
   private onTimeout: ((gameId: string, winnerId: string, reason: string) => void) | null = null;
 
   setTimeoutHandler(handler: (gameId: string, winnerId: string, reason: string) => void) {
@@ -24,8 +24,10 @@ export class GameManager {
     const player1 = this.players.get(player1Id)!;
     const player2 = this.players.get(player2Id)!;
 
-    const game = new Game(player1, player2, (winnerId, loserId) => { 
-      const ratingUpdate = this.updateRatings(player1.id, player2.id, winnerId);
+    const game = new Game(player1, player2, (winnerId, loserId) => {
+      const room = this.games.get(gameId);
+
+      this.updateRatings(player1.id, player2.id, winnerId);
 
       this.completedGames.set(gameId, {
         gameId,
@@ -39,6 +41,10 @@ export class GameManager {
         }
       });
 
+      if (room) {
+        room.spectators.forEach(sid => this.spectatorToGame.delete(sid));
+      }
+
       this.games.delete(gameId);
       this.playerToGame.delete(player1.id);
       this.playerToGame.delete(player2.id);
@@ -46,7 +52,15 @@ export class GameManager {
       this.onTimeout?.(gameId, winnerId, "timeout");
     });
 
-    this.games.set(gameId, game);
+    const room: GameRoom = {
+      game,
+      players: [player1, player2],
+      spectators: [],
+      playerChat: [],
+      spectatorChat: []
+    };
+
+    this.games.set(gameId, room);
     this.playerToGame.set(player1Id, gameId);
     this.playerToGame.set(player2Id, gameId);
 
@@ -104,23 +118,23 @@ export class GameManager {
     return { status: "waiting" };
   }
 
-  handleMove(playerId: string, move: string) : MoveResult {
+  handleMove(playerId: string, move: string): MoveResult {
     const gameId = this.playerToGame.get(playerId);
 
     if (!gameId) {
       return { success: false, message: "Game not found" };
     }
 
-    const game = this.games.get(gameId);
+    const room = this.games.get(gameId);
 
-    if (!game) {
+    if (!room) {
       return { success: false, message: "Game not found" };
     }
 
-    const result: MoveResult = game.makeMove(playerId, move);
+    const result: MoveResult = room.game.makeMove(playerId, move);
 
     if (result.success === true && result.isGameOver) {
-      const players = game.getPlayers();
+      const players = room.game.getPlayers();
 
       const ratingUpdate = this.updateRatings(
         players[0]!.id,
@@ -133,7 +147,7 @@ export class GameManager {
         gameId,
         players,
         pgn: result.pgn,
-        moves: game.getMoves(),
+        moves: room.game.getMoves(),
         createdAt: Date.now(),
         result: {
           winner: result.winner,
@@ -141,55 +155,16 @@ export class GameManager {
         }
       });
 
-      game.stopTimer();
+      room.game.stopTimer();
+
+      room.spectators.forEach(sid => this.spectatorToGame.delete(sid));
+
       this.games.delete(gameId);
       this.playerToGame.delete(players[0]!.id);
       this.playerToGame.delete(players[1]!.id);
     }
 
     return result;
-  }
-
-  getGameState(playerId: string) {
-    const gameId = this.playerToGame.get(playerId);
-    if (!gameId) return null;
-
-    const game = this.games.get(gameId);
-    if (!game) return null;
-
-    return game.getState();
-  }
-
-  getPlayersInGame(playerId: string): Player[] {
-    const gameId = this.playerToGame.get(playerId);
-    if (!gameId) return [];
-
-    const game = this.games.get(gameId);
-    if (!game) return [];
-
-    return game.getPlayers();
-  }
-
-  handleDisconnect(playerId: string) {
-    const gameId = this.playerToGame.get(playerId);
-    if (!gameId) return;
-
-    const game = this.games.get(gameId);
-    if (!game) return;
-
-    const players = game.getPlayers();
-    const opponent = players.find(p => p.id !== playerId);
-
-    if (opponent) {
-      this.updateRatings(players[0]!.id, players[1]!.id, opponent.id);
-    }
-
-    game.stopTimer(); // clean up the real-time timer
-    this.games.delete(gameId);
-    this.playerToGame.delete(playerId);
-    if (opponent) {
-      this.playerToGame.delete(opponent.id);
-    }
   }
 
   private updateRatings(
