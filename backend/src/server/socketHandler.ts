@@ -9,10 +9,16 @@ const playerToSocket = new Map<string, WebSocket>();
 const socketToPlayer = new Map<WebSocket, string>();
 const disconnectTimers = new Map<string, NodeJS.Timeout>();
 
+// tracks which sockets are spectators (spectatorId → socket) and vice versa
+// note: a spectator connects with a spectatorId that is separate from any playerId
+const spectatorToSocket = new Map<string, WebSocket>();
+const socketToSpectator = new Map<WebSocket, string>();
+
 gameManager.setTimeoutHandler((gameId, winnerId, reason) => {
     const replay = gameManager.getReplay(gameId);
     if (!replay) return;
 
+    // notify both players
     replay.players.forEach((player) => {
         const client = playerToSocket.get(player.id);
 
@@ -22,6 +28,20 @@ gameManager.setTimeoutHandler((gameId, winnerId, reason) => {
                 winner: winnerId,
                 reason,
                 ratings: null
+            }
+        }));
+    });
+
+    // notify all spectators watching this game
+    const spectators = gameManager.getSpectatorsInGame(gameId);
+    spectators.forEach((spectatorId) => {
+        const client = spectatorToSocket.get(spectatorId);
+
+        client?.send(JSON.stringify({
+            type: "GAME_OVER",
+            payload: {
+                winner: winnerId,
+                reason
             }
         }));
     });
@@ -93,55 +113,55 @@ wss.on("connection", (socket: WebSocket) => {
         }
 
         if (message.type === "MOVE") {
-    const playerId = socketToPlayer.get(socket);
-    if (!playerId) return;
+            const playerId = socketToPlayer.get(socket);
+            if (!playerId) return;
 
-    const players = gameManager.getPlayersInGame(playerId);
+            const players = gameManager.getPlayersInGame(playerId);
 
-    const move = message.payload.move;
-    const result = gameManager.handleMove(playerId, move);
+            const move = message.payload.move;
+            const result = gameManager.handleMove(playerId, move);
 
-if (!result.success) {
-    socket.send(JSON.stringify({
-        type: "ERROR",
-        payload: result
-    }));
-    return;
-}
-
-const successResult = result;
-
-players.forEach((player) => {
-    const client = playerToSocket.get(player.id);
-
-    client?.send(JSON.stringify({
-        type: "GAME_UPDATE",
-        payload: {
-            fen: successResult.fen,
-            turn: successResult.turn,
-            isGameOver: successResult.isGameOver,
-            whiteTime: successResult.whiteTime,
-            blackTime: successResult.blackTime
-        }
-    }));
-});
-
-if (successResult.isGameOver) {
-    players.forEach((player) => {
-        const client = playerToSocket.get(player.id);
-
-        client?.send(JSON.stringify({
-            type: "GAME_OVER",
-            payload: {
-                winner: successResult.winner,
-                reason: successResult.reason,
-                ratings: successResult.ratings,
-                pgn: successResult.pgn
+            if (!result.success) {
+                socket.send(JSON.stringify({
+                    type: "ERROR",
+                    payload: result
+                }));
+                return;
             }
-        }));
-    });
-}
-}
+
+            const successResult = result;
+
+            players.forEach((player) => {
+                const client = playerToSocket.get(player.id);
+
+                client?.send(JSON.stringify({
+                    type: "GAME_UPDATE",
+                    payload: {
+                        fen: successResult.fen,
+                        turn: successResult.turn,
+                        isGameOver: successResult.isGameOver,
+                        whiteTime: successResult.whiteTime,
+                        blackTime: successResult.blackTime
+                    }
+                }));
+            });
+
+            if (successResult.isGameOver) {
+                players.forEach((player) => {
+                    const client = playerToSocket.get(player.id);
+
+                    client?.send(JSON.stringify({
+                        type: "GAME_OVER",
+                        payload: {
+                            winner: successResult.winner,
+                            reason: successResult.reason,
+                            ratings: successResult.ratings,
+                            pgn: successResult.pgn
+                        }
+                    }));
+                });
+            }
+        }
 
         if (message.type === "GET_STATE") {
             const playerId = socketToPlayer.get(socket);
@@ -194,7 +214,7 @@ if (successResult.isGameOver) {
                 }
             }));
 
-            gameManager.handleDisconnect(playerId); 
+            gameManager.handleDisconnect(playerId);
 
             disconnectTimers.delete(playerId);
 
