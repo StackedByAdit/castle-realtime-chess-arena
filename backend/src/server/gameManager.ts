@@ -239,6 +239,45 @@ export class GameManager {
     return { message, gameId };
   }
 
+  getPlayerChat(playerId: string): ChatMessage[] {
+    const gameId = this.playerToGame.get(playerId);
+    if (!gameId) return [];
+
+    return this.games.get(gameId)?.playerChat ?? [];
+  }
+
+
+  getGameState(playerId: string) {
+    const gameId = this.playerToGame.get(playerId);
+    if (!gameId) return null;
+
+    const room = this.games.get(gameId);
+    if (!room) return null;
+
+    return room.game.getState();
+  }
+
+  getPlayersInGame(playerId: string): Player[] {
+    const gameId = this.playerToGame.get(playerId);
+    if (!gameId) return [];
+
+    const room = this.games.get(gameId);
+    if (!room) return [];
+
+    return room.game.getPlayers();
+  }
+
+  getPlayersInGameByGameId(gameId: string): Player[] {
+    const room = this.games.get(gameId);
+    if (!room) return [];
+    return room.game.getPlayers();
+  }
+
+  getGameIdByPlayer(playerId: string): string | null {
+    return this.playerToGame.get(playerId) ?? null;
+  }
+
+
   private updateRatings(
     player1Id: string,
     player2Id: string,
