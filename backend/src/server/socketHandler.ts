@@ -241,6 +241,28 @@ wss.on("connection", (socket: WebSocket) => {
             });
         }
 
+         if (message.type === "SPECTATOR_CHAT") {
+            const spectatorId = socketToSpectator.get(socket);
+            if (!spectatorId) return;
+
+            const text: string = message.payload.text?.trim();
+            if (!text) return;
+
+            const result = gameManager.sendSpectatorChat(spectatorId, text);
+            if (!result) return;
+
+            // broadcast only to all spectators of this game
+            const spectators = gameManager.getSpectatorsInGame(result.gameId);
+            spectators.forEach((sid) => {
+                const client = spectatorToSocket.get(sid);
+
+                client?.send(JSON.stringify({
+                    type: "SPECTATOR_CHAT",
+                    payload: result.message
+                }));
+            });
+        }
+
         if (message.type === "GET_STATE") {
             const playerId = socketToPlayer.get(socket);
             if (!playerId) return;
