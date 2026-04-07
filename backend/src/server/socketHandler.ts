@@ -220,6 +220,27 @@ wss.on("connection", (socket: WebSocket) => {
             }
         }
 
+        if (message.type === "PLAYER_CHAT") {
+            const playerId = socketToPlayer.get(socket);
+            if (!playerId) return;
+
+            const text: string = message.payload.text?.trim();
+            if (!text) return;
+
+            const result = gameManager.sendPlayerChat(playerId, text);
+            if (!result) return;
+
+            const players = gameManager.getPlayersInGame(playerId);
+            players.forEach((player) => {
+                const client = playerToSocket.get(player.id);
+
+                client?.send(JSON.stringify({
+                    type: "PLAYER_CHAT",
+                    payload: result.message
+                }));
+            });
+        }
+
         if (message.type === "GET_STATE") {
             const playerId = socketToPlayer.get(socket);
             if (!playerId) return;
