@@ -9,8 +9,6 @@ const playerToSocket = new Map<string, WebSocket>();
 const socketToPlayer = new Map<WebSocket, string>();
 const disconnectTimers = new Map<string, NodeJS.Timeout>();
 
-// tracks which sockets are spectators (spectatorId → socket) and vice versa
-// note: a spectator connects with a spectatorId that is separate from any playerId
 const spectatorToSocket = new Map<string, WebSocket>();
 const socketToSpectator = new Map<WebSocket, string>();
 
@@ -32,7 +30,6 @@ gameManager.setTimeoutHandler((gameId, winnerId, reason) => {
         }));
     });
 
-    // notify all spectators watching this game
     const spectators = gameManager.getSpectatorsInGame(gameId);
     spectators.forEach((spectatorId) => {
         const client = spectatorToSocket.get(spectatorId);
@@ -54,7 +51,7 @@ wss.on("connection", (socket: WebSocket) => {
     socket.on("message", (data) => {
         const message = JSON.parse(data.toString());
 
-        if (message.type === "JOIN") {
+        if (message.type === "JOIN") { 
             const playerId = message.playerId;
 
             playerToSocket.set(playerId, socket);
@@ -74,7 +71,10 @@ wss.on("connection", (socket: WebSocket) => {
             if (existingGame) {
                 socket.send(JSON.stringify({
                     type: "RECONNECTED",
-                    payload: existingGame
+                    payload: {
+                        ...existingGame,
+                        playerChat: gameManager.getPlayerChat(playerId)
+                    }
                 }));
                 return;
             }
