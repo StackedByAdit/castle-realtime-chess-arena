@@ -51,7 +51,7 @@ wss.on("connection", (socket: WebSocket) => {
     socket.on("message", (data) => {
         const message = JSON.parse(data.toString());
 
-        if (message.type === "JOIN") { 
+        if (message.type === "JOIN") {
             const playerId = message.playerId;
 
             playerToSocket.set(playerId, socket);
@@ -137,7 +137,7 @@ wss.on("connection", (socket: WebSocket) => {
             }));
         }
 
-         if (message.type === "MOVE") {
+        if (message.type === "MOVE") {
             const playerId = socketToPlayer.get(socket);
             if (!playerId) return;
 
@@ -241,7 +241,7 @@ wss.on("connection", (socket: WebSocket) => {
             });
         }
 
-         if (message.type === "SPECTATOR_CHAT") {
+        if (message.type === "SPECTATOR_CHAT") {
             const spectatorId = socketToSpectator.get(socket);
             if (!spectatorId) return;
 
@@ -251,7 +251,6 @@ wss.on("connection", (socket: WebSocket) => {
             const result = gameManager.sendSpectatorChat(spectatorId, text);
             if (!result) return;
 
-            // broadcast only to all spectators of this game
             const spectators = gameManager.getSpectatorsInGame(result.gameId);
             spectators.forEach((sid) => {
                 const client = spectatorToSocket.get(sid);
@@ -288,6 +287,15 @@ wss.on("connection", (socket: WebSocket) => {
     });
 
     socket.on("close", () => {
+
+        const spectatorId = socketToSpectator.get(socket);
+        if (spectatorId) {
+            spectatorToSocket.delete(spectatorId);
+            socketToSpectator.delete(socket);
+            gameManager.removeSpectator(spectatorId);
+            return;
+        }
+
         const playerId = socketToPlayer.get(socket);
         if (!playerId) return;
 
