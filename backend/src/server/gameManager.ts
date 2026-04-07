@@ -277,6 +277,30 @@ export class GameManager {
     return this.playerToGame.get(playerId) ?? null;
   }
 
+  handleDisconnect(playerId: string) {
+    const gameId = this.playerToGame.get(playerId);
+    if (!gameId) return;
+
+    const room = this.games.get(gameId);
+    if (!room) return;
+
+    const players = room.game.getPlayers();
+    const opponent = players.find(p => p.id !== playerId);
+
+    if (opponent) {
+      this.updateRatings(players[0]!.id, players[1]!.id, opponent.id);
+    }
+
+    room.game.stopTimer(); 
+
+    room.spectators.forEach(sid => this.spectatorToGame.delete(sid));
+
+    this.games.delete(gameId);
+    this.playerToGame.delete(playerId);
+    if (opponent) {
+      this.playerToGame.delete(opponent.id);
+    }
+  }
 
   private updateRatings(
     player1Id: string,
