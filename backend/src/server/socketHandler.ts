@@ -137,11 +137,15 @@ wss.on("connection", (socket: WebSocket) => {
             }));
         }
 
-        if (message.type === "MOVE") {
+         if (message.type === "MOVE") {
             const playerId = socketToPlayer.get(socket);
             if (!playerId) return;
 
             const players = gameManager.getPlayersInGame(playerId);
+            const spectatorGameId = gameManager.getGameIdByPlayer(playerId);
+            const spectatorsSnapshot = spectatorGameId
+                ? gameManager.getSpectatorsInGame(spectatorGameId)
+                : [];
 
             const move = message.payload.move;
             const result = gameManager.handleMove(playerId, move);
@@ -171,6 +175,21 @@ wss.on("connection", (socket: WebSocket) => {
                 }));
             });
 
+            spectatorsSnapshot.forEach((spectatorId) => {
+                const client = spectatorToSocket.get(spectatorId);
+
+                client?.send(JSON.stringify({
+                    type: "GAME_UPDATE",
+                    payload: {
+                        fen: successResult.fen,
+                        turn: successResult.turn,
+                        isGameOver: successResult.isGameOver,
+                        whiteTime: successResult.whiteTime,
+                        blackTime: successResult.blackTime
+                    }
+                }));
+            });
+
             if (successResult.isGameOver) {
                 players.forEach((player) => {
                     const client = playerToSocket.get(player.id);
@@ -181,6 +200,19 @@ wss.on("connection", (socket: WebSocket) => {
                             winner: successResult.winner,
                             reason: successResult.reason,
                             ratings: successResult.ratings,
+                            pgn: successResult.pgn
+                        }
+                    }));
+                });
+
+                spectatorsSnapshot.forEach((spectatorId) => {
+                    const client = spectatorToSocket.get(spectatorId);
+
+                    client?.send(JSON.stringify({
+                        type: "GAME_OVER",
+                        payload: {
+                            winner: successResult.winner,
+                            reason: successResult.reason,
                             pgn: successResult.pgn
                         }
                     }));
