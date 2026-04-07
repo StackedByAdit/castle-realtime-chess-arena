@@ -167,6 +167,41 @@ export class GameManager {
     return result;
   }
 
+  addSpectator(spectatorId: string, gameId: string) {
+    const room = this.games.get(gameId);
+    if (!room) return null;
+
+    // don't add the same spectator twice
+    if (!room.spectators.includes(spectatorId)) {
+      room.spectators.push(spectatorId);
+      this.spectatorToGame.set(spectatorId, gameId);
+    }
+
+    return {
+      state: room.game.getState(),
+      spectatorChat: room.spectatorChat  
+    };
+  }
+
+  removeSpectator(spectatorId: string) {
+    const gameId = this.spectatorToGame.get(spectatorId);
+    if (!gameId) return;
+
+    const room = this.games.get(gameId);
+    if (!room) return;
+
+    room.spectators = room.spectators.filter(id => id !== spectatorId);
+    this.spectatorToGame.delete(spectatorId);
+  }
+
+  getSpectatorsInGame(gameId: string): string[] {
+    return this.games.get(gameId)?.spectators ?? [];
+  }
+
+  getGameIdForSpectator(spectatorId: string): string | null {
+    return this.spectatorToGame.get(spectatorId) ?? null;
+  }
+
   private updateRatings(
     player1Id: string,
     player2Id: string,
