@@ -1,3 +1,5 @@
+import type { Game } from "./Game.js";
+
 export type Player = {
   id: string;
   rating: number;
@@ -25,18 +27,32 @@ export type Move = {
 
 export type MoveResult =
   | {
-      success: false;
-      message: string;
-    }
+    success: false;
+    message: string;
+  }
   | {
-      success: true;
-      isGameOver: boolean;
-      winner: string | null;
-      reason: string | null;
-      fen: string;
-      turn: string;
-      whiteTime: number;
-      blackTime: number;
-      pgn: string;
-      ratings?: Record<string, number>;
-    };
+    success: true;
+    isGameOver: boolean;
+    winner: string | null;
+    reason: string | null;
+    fen: string;
+    turn: string;
+    whiteTime: number;
+    blackTime: number;
+    pgn: string;
+    ratings?: Record<string, number>;
+  };
+
+export type ChatMessage = {
+  senderId: string;
+  text: string;
+  timestamp: number;
+};
+
+export type GameRoom = {
+  game: Game;
+  players: Player[];
+  spectators: string[];
+  playerChat: ChatMessage[];
+  spectatorChat: ChatMessage[];
+};
