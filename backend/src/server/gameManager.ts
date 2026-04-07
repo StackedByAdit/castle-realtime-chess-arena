@@ -222,6 +222,23 @@ export class GameManager {
     return { message, gameId };
   }
 
+  sendSpectatorChat(senderId: string, text: string): { message: ChatMessage; gameId: string } | null {
+    const gameId = this.spectatorToGame.get(senderId);
+    if (!gameId) return null;
+
+    const room = this.games.get(gameId);
+    if (!room) return null;
+
+    const message: ChatMessage = {
+      senderId,
+      text,
+      timestamp: Date.now()
+    };
+
+    room.spectatorChat.push(message);
+    return { message, gameId };
+  }
+
   private updateRatings(
     player1Id: string,
     player2Id: string,
