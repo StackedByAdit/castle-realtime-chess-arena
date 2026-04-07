@@ -59,7 +59,6 @@ wss.on("connection", (socket: WebSocket) => {
 
             console.log("Player connected:", playerId);
 
-            // cancel disconnect timer if reconnect
             if (disconnectTimers.has(playerId)) {
                 clearTimeout(disconnectTimers.get(playerId)!);
                 disconnectTimers.delete(playerId);
@@ -110,6 +109,32 @@ wss.on("connection", (socket: WebSocket) => {
                     }));
                 });
             }
+        }
+
+        if (message.type === "SPECTATE") {
+            const spectatorId = message.spectatorId;
+            const gameId = message.gameId;
+
+            spectatorToSocket.set(spectatorId, socket);
+            socketToSpectator.set(socket, spectatorId);
+
+            const result = gameManager.addSpectator(spectatorId, gameId);
+
+            if (!result) {
+                socket.send(JSON.stringify({
+                    type: "ERROR",
+                    payload: { message: "Game not found" }
+                }));
+                return;
+            }
+
+            socket.send(JSON.stringify({
+                type: "SPECTATING",
+                payload: {
+                    state: result.state,
+                    spectatorChat: result.spectatorChat
+                }
+            }));
         }
 
         if (message.type === "MOVE") {
