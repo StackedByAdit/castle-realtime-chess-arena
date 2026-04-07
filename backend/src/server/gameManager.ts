@@ -202,6 +202,26 @@ export class GameManager {
     return this.spectatorToGame.get(spectatorId) ?? null;
   }
 
+  sendPlayerChat(senderId: string, text: string): { message: ChatMessage; gameId: string } | null {
+    const gameId = this.playerToGame.get(senderId);
+    if (!gameId) return null;
+
+    const room = this.games.get(gameId);
+    if (!room) return null;
+
+    const isPlayer = room.players.some(p => p.id === senderId);
+    if (!isPlayer) return null;
+
+    const message: ChatMessage = {
+      senderId,
+      text,
+      timestamp: Date.now()
+    };
+
+    room.playerChat.push(message);
+    return { message, gameId };
+  }
+
   private updateRatings(
     player1Id: string,
     player2Id: string,
