@@ -92,3 +92,25 @@ type Action =
         };
     }
     | { type: "RESET" };
+
+const initialState: GameState = {
+    fen: "start",
+    turn: "w",
+
+    whiteTime: 300,
+    blackTime: 300,
+
+    isGameOver: false,
+    winner: null,
+    reason: null,
+    ratings: undefined,
+
+    color: null,
+    opponent: null,
+
+    playerChat: [],
+    spectatorChat: [],
+
+    isSpectator: false,
+    status: "idle"
+};
