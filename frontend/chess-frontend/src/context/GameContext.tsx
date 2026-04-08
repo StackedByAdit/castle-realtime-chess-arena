@@ -114,3 +114,81 @@ const initialState: GameState = {
     isSpectator: false,
     status: "idle"
 };
+
+function reducer(state: GameState, action: Action): GameState {
+    switch (action.type) {
+
+        case "WAITING":
+            return { ...state, status: "waiting" };
+
+        case "GAME_START":
+            return {
+                ...state,
+                status: "playing",
+                color: action.payload.color,
+                opponent: action.payload.opponent,
+                isGameOver: false
+            };
+
+        case "GAME_UPDATE":
+            return {
+                ...state,
+                fen: action.payload.fen,
+                turn: action.payload.turn,
+                whiteTime: action.payload.whiteTime,
+                blackTime: action.payload.blackTime,
+                isGameOver: action.payload.isGameOver
+            };
+
+        case "GAME_STATE":
+            return {
+                ...state,
+                fen: action.payload.fen,
+                turn: action.payload.turn,
+                whiteTime: action.payload.whiteTime,
+                blackTime: action.payload.blackTime
+            };
+
+        case "GAME_OVER":
+            return {
+                ...state,
+                status: "finished",
+                isGameOver: true,
+                ...action.payload
+            };
+
+        case "PLAYER_CHAT":
+            return {
+                ...state,
+                playerChat: [...state.playerChat, action.payload]
+            };
+
+        case "SPECTATOR_CHAT":
+            return {
+                ...state,
+                spectatorChat: [...state.spectatorChat, action.payload]
+            };
+
+        case "RECONNECTED":
+            return {
+                ...state,
+                status: "playing",
+                ...action.payload
+            };
+
+        case "SPECTATING":
+            return {
+                ...state,
+                isSpectator: true,
+                status: "playing",
+                ...action.payload.state,
+                spectatorChat: action.payload.spectatorChat
+            };
+
+        case "RESET":
+            return initialState;
+
+        default:
+            return state;
+    }
+}
