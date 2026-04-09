@@ -96,3 +96,68 @@ const initialState: GameState = {
   isSpectator: false,
   status: "idle"
 };
+
+
+export const useGameStore = create<GameStore>((set) => ({
+  ...initialState,
+
+  setWaiting: () => set({ status: "waiting" }),
+
+  setGameStart: ({ color, opponent }) =>
+    set({
+      status: "playing",
+      color,
+      opponent,
+      isGameOver: false
+    }),
+
+  setGameUpdate: (payload) =>
+    set((state) => ({
+      ...state,
+      fen: payload.fen,
+      turn: payload.turn,
+      whiteTime: payload.whiteTime,
+      blackTime: payload.blackTime,
+      ...(payload.isGameOver !== undefined && {
+        isGameOver: payload.isGameOver
+      })
+    })),
+
+  setGameOver: ({ winner, reason, ratings }) =>
+    set({
+      status: "finished",
+      isGameOver: true,
+      winner,
+      reason,
+      ratings
+    }),
+
+  addPlayerChat: (msg) =>
+    set((state) => ({
+      playerChat: [...state.playerChat, msg]
+    })),
+
+  addSpectatorChat: (msg) =>
+    set((state) => ({
+      spectatorChat: [...state.spectatorChat, msg]
+    })),
+
+  setReconnected: (payload) =>
+    set({
+      status: "playing",
+      ...payload
+    }),
+
+  setSpectating: (payload) =>
+    set({
+      isSpectator: true,
+      status: "playing",
+      fen: payload.state.fen,
+      turn: payload.state.turn,
+      whiteTime: payload.state.whiteTime,
+      blackTime: payload.state.blackTime,
+      spectatorChat: payload.spectatorChat
+    }),
+
+  reset: () => set(initialState)
+}));
