@@ -1,3 +1,5 @@
+import { create } from "zustand";
+
 type ChatMessage = {
   senderId: string;
   text: string;
@@ -27,3 +29,48 @@ type GameState = {
 };
 
 
+type GameStore = GameState & {
+  setWaiting: () => void;
+
+  setGameStart: (payload: {
+    color: "w" | "b";
+    opponent: string;
+  }) => void;
+
+  setGameUpdate: (payload: {
+    fen: string;
+    turn: "w" | "b";
+    whiteTime: number;
+    blackTime: number;
+    isGameOver?: boolean;
+  }) => void;
+
+  setGameOver: (payload: {
+    winner: string | null;
+    reason: string | null;
+    ratings?: Record<string, number>;
+  }) => void;
+
+  addPlayerChat: (msg: ChatMessage) => void;
+  addSpectatorChat: (msg: ChatMessage) => void;
+
+  setReconnected: (payload: {
+    fen: string;
+    turn: "w" | "b";
+    whiteTime: number;
+    blackTime: number;
+    playerChat: ChatMessage[];
+  }) => void;
+
+  setSpectating: (payload: {
+    state: {
+      fen: string;
+      turn: "w" | "b";
+      whiteTime: number;
+      blackTime: number;
+    };
+    spectatorChat: ChatMessage[];
+  }) => void;
+
+  reset: () => void;
+};
