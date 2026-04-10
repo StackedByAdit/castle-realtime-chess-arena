@@ -151,10 +151,7 @@ export const useGameStore = create<GameStore>((set) => ({
     set({
       isSpectator: true,
       status: "playing",
-      fen: payload.state.fen,
-      turn: payload.state.turn,
-      whiteTime: payload.state.whiteTime,
-      blackTime: payload.state.blackTime,
+      ...payload.state,
       spectatorChat: payload.spectatorChat
     }),
 
