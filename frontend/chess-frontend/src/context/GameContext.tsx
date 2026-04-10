@@ -97,7 +97,6 @@ const initialState: GameState = {
   status: "idle"
 };
 
-
 export const useGameStore = create<GameStore>((set) => ({
   ...initialState,
 
