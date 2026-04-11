@@ -33,6 +33,8 @@ export function useGame(myId: string) {
       return;
     }
 
+    if (tickRef.current) clearInterval(tickRef.current);
+
     tickRef.current = setInterval(() => {
       const s = useGameStore.getState();
       if (s.isGameOver || s.status !== "playing") return;
