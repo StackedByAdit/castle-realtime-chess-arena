@@ -107,4 +107,28 @@ export default function GamePage() {
       </div>
     );
   }
+
+  if (status === "finished") {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-gray-900 text-white gap-4">
+        {isGameOver && (
+          <div>
+            <h2>Game Over</h2>
+
+            <p>Winner: {winner ?? "Draw"}</p>
+            <p>Reason: {reason}</p>
+          </div>
+        )}
+
+        <button
+          onClick={() => useGameStore.getState().reset()}
+          className="bg-red-500 px-4 py-2 rounded"
+        >
+          Reset
+        </button>
+      </div>
+    );
+  }
+
+  return null;
 }
