@@ -55,4 +55,56 @@ export default function GamePage() {
     );
   }
 
+  if (status === "playing") {
+    return (
+      <div className="h-screen bg-gray-900 text-white flex flex-col items-center justify-center gap-4">
+
+        <h2>Game Started 🎮</h2>
+
+        <div>
+          <p><b>You:</b> {color}</p>
+          <p><b>Opponent:</b> {opponent}</p>
+        </div>
+
+        <div>
+          <p>Turn: {turn}</p>
+        </div>
+
+        <div>
+          <p>White Time: {whiteTime}s</p>
+          <p>Black Time: {blackTime}s</p>
+        </div>
+
+        <div>
+          <p><b>FEN:</b></p>
+          <code className="text-xs">{fen}</code>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => socketActions.move("e2e4")}
+            className="bg-blue-500 px-3 py-1 rounded"
+          >
+            e2e4
+          </button>
+
+          <button
+            onClick={() => socketActions.move("d2d4")}
+            className="bg-green-500 px-3 py-1 rounded"
+          >
+            d2d4
+          </button>
+        </div>
+
+        <div className="mt-4">
+          <p>Chat:</p>
+          {playerChat.map((msg, i) => (
+            <div key={i}>
+              <b>{msg.senderId}:</b> {msg.text}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 }
