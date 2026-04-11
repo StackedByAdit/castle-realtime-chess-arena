@@ -26,8 +26,9 @@ type GameState = {
 
   isSpectator: boolean;
   status: "idle" | "waiting" | "playing" | "finished";
-};
 
+  _replayData: unknown | null;
+};
 
 type GameStore = GameState & {
   setWaiting: () => void;
@@ -72,6 +73,8 @@ type GameStore = GameState & {
     spectatorChat: ChatMessage[];
   }) => void;
 
+  setReplayData: (data: unknown) => void;
+
   reset: () => void;
 };
 
@@ -94,7 +97,9 @@ const initialState: GameState = {
   spectatorChat: [],
 
   isSpectator: false,
-  status: "idle"
+  status: "idle",
+
+  _replayData: null,
 };
 
 export const useGameStore = create<GameStore>((set) => ({
@@ -154,6 +159,8 @@ export const useGameStore = create<GameStore>((set) => ({
       ...payload.state,
       spectatorChat: payload.spectatorChat
     }),
+
+  setReplayData: (data) => set({ _replayData: data }),
 
   reset: () => set(initialState)
 }));
