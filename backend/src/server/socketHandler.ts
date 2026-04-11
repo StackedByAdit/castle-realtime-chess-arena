@@ -104,7 +104,8 @@ wss.on("connection", (socket: WebSocket) => {
                         type: "GAME_START",
                         payload: {
                             color: index === 0 ? "w" : "b",
-                            opponent: players.find(p => p !== id)
+                            opponent: players.find(p => p !== id),
+                            gameId: matchResult.gameId
                         }
                     }));
                 });
