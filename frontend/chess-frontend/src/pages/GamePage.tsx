@@ -39,4 +39,20 @@ export default function GamePage() {
     hasJoined.current = true;
   }, [socketRef]);
 
+  if (status === "idle") {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-900 text-white">
+        <p>Connecting...</p>
+      </div>
+    );
+  }
+
+  if (status === "waiting") {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-900 text-white">
+        <p className="text-xl">Waiting for opponent...</p>
+      </div>
+    );
+  }
+
 }
