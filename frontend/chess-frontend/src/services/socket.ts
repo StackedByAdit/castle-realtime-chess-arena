@@ -26,6 +26,18 @@ export const socketActions = {
         send({ type: "MOVE", payload: { move } });
     },
 
+    spectate(spectatorId: string, gameId: string) {
+        send({ type: "SPECTATE", spectatorId, gameId });
+    },
+
+    playerChat(text: string) {
+        send({ type: "PLAYER_CHAT", payload: { text } });
+    },
+
+    spectatorChat(text: string) {
+        send({ type: "SPECTATOR_CHAT", payload: { text } });
+    },
+
     getState() {
         send({ type: "GET_STATE" });
     },
