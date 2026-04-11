@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useGameStore } from "../context/GameContext";
+import { registerSocket, unregisterSocket } from "../services/socket";
 
 export const useSocket = () => {
   const socketRef = useRef<WebSocket | null>(null);
@@ -9,6 +10,7 @@ export const useSocket = () => {
 
     socket.onopen = () => {
       console.log("Connected to server");
+      registerSocket(socket); 
     };
 
     socket.onmessage = (event) => {
@@ -60,12 +62,14 @@ export const useSocket = () => {
 
     socket.onclose = () => {
       console.log("Disconnected");
+      unregisterSocket();
     };
 
     socketRef.current = socket;
 
     return () => {
       socket.close();
+      unregisterSocket();
     };
   }, []);
 
