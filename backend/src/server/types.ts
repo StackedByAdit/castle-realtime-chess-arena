@@ -25,6 +25,8 @@ export type Move = {
   san: string;
 };
 
+// Bug fix #6: Added `moves` field to the success variant so the server can
+// broadcast the full move history with every GAME_UPDATE.
 export type MoveResult =
   | {
     success: false;
@@ -40,6 +42,7 @@ export type MoveResult =
     whiteTime: number;
     blackTime: number;
     pgn: string;
+    moves: Move[];
     ratings?: Record<string, number>;
   };
 
