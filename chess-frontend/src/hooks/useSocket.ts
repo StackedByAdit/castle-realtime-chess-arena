@@ -1,17 +1,29 @@
 import { useEffect } from 'react';
 import { socketService } from '../services/socket';
 import { useGameStore } from '../context/GameStore';
+import type { Move, ChatMessage, CompletedGame } from '../types/game';
 
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080';
 
+/**
+ * Initialises the WebSocket connection and registers the centralised message
+ * handler. Call this EXACTLY ONCE at the top of the component tree (App.tsx).
+ *
+ * Bug #10: Previously called in App, LobbyPage, and GamePage simultaneously,
+ * causing three duplicate handlers to be registered. Now only App calls this.
+ * Components that only need to send messages should use useSocketActions().
+ *
+ * Bug #25: Using useGameStore.getState() inside the effect avoids stale
+ * closures and makes the empty dependency array genuinely correct.
+ */
 export function useSocket() {
-  const store = useGameStore();
-
   useEffect(() => {
     socketService.connect(WS_URL);
 
     const unsub = socketService.onMessage((data) => {
-      const msg = data as { type: string; payload?: Record<string, unknown>; message?: string };
+      // Bug #25 fix: getState() always reads the current store — no stale closure.
+      const store = useGameStore.getState();
+      const msg = data as { type: string; payload?: Record<string, unknown> };
 
       switch (msg.type) {
         case 'WAITING':
@@ -25,12 +37,14 @@ export function useSocket() {
         }
 
         case 'GAME_UPDATE': {
+          // Bug #6: moves now included in the payload
           const p = msg.payload as {
             fen: string;
             turn: string;
             isGameOver: boolean;
             whiteTime: number;
             blackTime: number;
+            moves: Move[];
           };
           store.setGameUpdate(p);
           break;
@@ -48,20 +62,23 @@ export function useSocket() {
         }
 
         case 'RECONNECTED': {
+          // Bug #23 fix: properly typed Move[] and ChatMessage[] instead of never[]
           const p = msg.payload as {
             fen: string;
             turn: string;
             isGameOver: boolean;
             whiteTime: number;
             blackTime: number;
-            moves: [];
-            playerChat: [];
+            moves: Move[];
+            playerChat: ChatMessage[];
           };
           store.setReconnected(p);
           break;
         }
 
         case 'SPECTATING': {
+          // Bug #5: gameId is now sent by the server inside the payload;
+          // we no longer fall back to the stale store.gameId.
           const p = msg.payload as {
             state: {
               fen: string;
@@ -69,31 +86,38 @@ export function useSocket() {
               isGameOver: boolean;
               whiteTime: number;
               blackTime: number;
-              moves: [];
+              moves: Move[];
             };
-            spectatorChat: [];
+            spectatorChat: ChatMessage[];
             gameId: string;
           };
-          store.setSpectating({ ...p, gameId: store.gameId || '' });
+          store.setSpectating(p);
           break;
         }
 
         case 'PLAYER_CHAT': {
-          const p = msg.payload as { senderId: string; text: string; timestamp: number };
+          const p = msg.payload as ChatMessage;
           store.addPlayerChat(p);
           break;
         }
 
         case 'SPECTATOR_CHAT': {
-          const p = msg.payload as { senderId: string; text: string; timestamp: number };
+          const p = msg.payload as ChatMessage;
           store.addSpectatorChat(p);
           break;
         }
 
         case 'REPLAY_DATA': {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const p = msg.payload as any;
+          // Bug #22 fix: typed as CompletedGame instead of any
+          const p = msg.payload as CompletedGame | undefined;
           if (p) store.setReplayData(p);
+          break;
+        }
+
+        case 'ERROR': {
+          // Bug #16: Surface server errors (e.g. "Replay not found") in the UI
+          const p = msg.payload as { message: string };
+          store.setError(p.message);
           break;
         }
 
@@ -105,45 +129,5 @@ export function useSocket() {
     return () => {
       unsub();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const joinGame = (playerId: string) => {
-    store.setPlayerId(playerId);
-    socketService.send({ type: 'JOIN', playerId });
-  };
-
-  const makeMove = (move: string) => {
-    socketService.send({ type: 'MOVE', payload: { move } });
-  };
-
-  const sendPlayerChat = (text: string) => {
-    socketService.send({ type: 'PLAYER_CHAT', payload: { text } });
-  };
-
-  const sendSpectatorChat = (text: string) => {
-    socketService.send({ type: 'SPECTATOR_CHAT', payload: { text } });
-  };
-
-  const spectateGame = (spectatorId: string, gameId: string) => {
-    socketService.send({ type: 'SPECTATE', spectatorId, gameId });
-  };
-
-  const getState = () => {
-    socketService.send({ type: 'GET_STATE' });
-  };
-
-  const getReplay = (gameId: string) => {
-    socketService.send({ type: 'GET_REPLAY', payload: { gameId } });
-  };
-
-  return {
-    joinGame,
-    makeMove,
-    sendPlayerChat,
-    sendSpectatorChat,
-    spectateGame,
-    getState,
-    getReplay,
-  };
+  }, []); // Empty deps is correct — getState() avoids any stale closure issue
 }

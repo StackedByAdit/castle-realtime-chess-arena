@@ -6,8 +6,20 @@ class SocketService {
   private url: string = '';
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
+  // Bug #9: Queue messages sent while the socket is reconnecting so they
+  // are not silently dropped.
+  private pendingMessages: object[] = [];
 
   connect(url: string) {
+    // Bug #9: Guard against creating duplicate connections on hot-reload or
+    // accidental double-calls.
+    if (
+      this.ws &&
+      (this.ws.readyState === WebSocket.OPEN ||
+        this.ws.readyState === WebSocket.CONNECTING)
+    ) {
+      return;
+    }
     this.url = url;
     this._connect();
   }
@@ -35,6 +47,9 @@ class SocketService {
     this.ws.onopen = () => {
       console.log('WebSocket connected');
       this.reconnectAttempts = 0;
+      // Flush any messages queued during the disconnected window.
+      const pending = this.pendingMessages.splice(0);
+      pending.forEach((msg) => this.ws!.send(JSON.stringify(msg)));
     };
 
     this.ws.onerror = (err) => {
@@ -46,7 +61,9 @@ class SocketService {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message));
     } else {
-      console.warn('WebSocket not open, cannot send', message);
+      // Bug #9: Queue instead of silently dropping.
+      this.pendingMessages.push(message);
+      console.warn('WebSocket not open — message queued', message);
     }
   }
 

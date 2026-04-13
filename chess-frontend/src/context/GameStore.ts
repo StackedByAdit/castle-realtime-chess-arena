@@ -24,6 +24,7 @@ const initialState: GameState = {
   playerChat: [],
   spectatorChat: [],
   replayData: null,
+  lastError: null,
 };
 
 export const useGameStore = create<GameState & GameActions>((set) => ({
@@ -31,7 +32,7 @@ export const useGameStore = create<GameState & GameActions>((set) => ({
 
   setPlayerId: (id: string) => set({ playerId: id }),
 
-  setWaiting: () => set({ status: 'waiting' }),
+  setWaiting: () => set({ status: 'waiting', lastError: null }),
 
   setGameStart: (payload: { color: PlayerColor; opponent: string; gameId: string }) =>
     set({
@@ -52,8 +53,11 @@ export const useGameStore = create<GameState & GameActions>((set) => ({
       moves: [],
       playerChat: [],
       spectatorChat: [],
+      lastError: null,
     }),
 
+  // Bug #6: Now also updates the moves list so the live MovesList component
+  // shows the current move history after every move.
   setGameUpdate: (payload) =>
     set({
       fen: payload.fen,
@@ -61,6 +65,7 @@ export const useGameStore = create<GameState & GameActions>((set) => ({
       isGameOver: payload.isGameOver,
       whiteTime: payload.whiteTime,
       blackTime: payload.blackTime,
+      moves: payload.moves,
     }),
 
   setGameOver: (payload) =>
@@ -83,6 +88,7 @@ export const useGameStore = create<GameState & GameActions>((set) => ({
       blackTime: payload.blackTime,
       moves: payload.moves,
       playerChat: payload.playerChat,
+      lastError: null,
     }),
 
   setSpectating: (payload: {
@@ -100,6 +106,7 @@ export const useGameStore = create<GameState & GameActions>((set) => ({
     set({
       status: 'spectating',
       isSpectator: true,
+      // Bug #5: gameId now comes from the server payload (not from stale store state)
       gameId: payload.gameId,
       fen: payload.state.fen,
       turn: payload.state.turn,
@@ -108,6 +115,7 @@ export const useGameStore = create<GameState & GameActions>((set) => ({
       blackTime: payload.state.blackTime,
       moves: payload.state.moves,
       spectatorChat: payload.spectatorChat,
+      lastError: null,
     }),
 
   addPlayerChat: (msg: ChatMessage) =>
@@ -119,4 +127,8 @@ export const useGameStore = create<GameState & GameActions>((set) => ({
   setReplayData: (data: CompletedGame) => set({ replayData: data }),
 
   resetGame: () => set({ ...initialState }),
+
+  // Bug #16: Error surfacing for things like "Replay not found"
+  setError: (msg: string | null) => set({ lastError: msg }),
+  clearError: () => set({ lastError: null }),
 }));

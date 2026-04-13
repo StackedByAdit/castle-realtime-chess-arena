@@ -16,6 +16,13 @@ const REASON_LABELS: Record<string, string> = {
   opponent_disconnected: 'Opponent disconnected',
 };
 
+/**
+ * Bug #24: Removed the `_youLost` variable that was computed but immediately
+ * voided just to suppress a lint warning.
+ *
+ * Bug #24 / spectator headline: Spectators now get a neutral headline style
+ * (overlay__headline--spectate) instead of incorrectly showing --lose.
+ */
 export const GameOverlay: React.FC<GameOverlayProps> = ({ onReturnToLobby }) => {
   const winner = useGameStore((s) => s.winner);
   const reason = useGameStore((s) => s.reason);
@@ -23,8 +30,7 @@ export const GameOverlay: React.FC<GameOverlayProps> = ({ onReturnToLobby }) => 
   const { playerId, isSpectator } = useGame();
 
   const isDraw = !winner;
-  const youWon = winner === playerId;
-  const _youLost = !isDraw && !youWon && !isSpectator; void _youLost;
+  const youWon = !isSpectator && winner === playerId;
 
   const headline = isDraw
     ? 'Draw!'
@@ -36,6 +42,8 @@ export const GameOverlay: React.FC<GameOverlayProps> = ({ onReturnToLobby }) => 
 
   const headlineClass = isDraw
     ? 'overlay__headline--draw'
+    : isSpectator
+    ? 'overlay__headline--spectate'   // Bug fix: neutral style for spectators
     : youWon
     ? 'overlay__headline--win'
     : 'overlay__headline--lose';

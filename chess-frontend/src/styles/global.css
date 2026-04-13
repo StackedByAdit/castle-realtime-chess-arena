@@ -171,8 +171,8 @@ input  { font-family: inherit; }
   letter-spacing: -0.01em;
 }
 
+/* Bug #30 fix: removed duplicate font-size:15px declaration */
 .lobby__sub {
-  font-size: 15px;
   color: var(--text-secondary);
   margin-top: 6px;
   letter-spacing: 0.04em;
@@ -246,6 +246,36 @@ input  { font-family: inherit; }
   0%   { width: 0; }
   100% { width: 24px; }
 }
+
+/* Bug #16: Error notification banner in the lobby */
+.lobby__error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(224, 92, 92, 0.12);
+  border: 1px solid rgba(224, 92, 92, 0.3);
+  color: var(--lose-color);
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  max-width: 840px;
+  width: 100%;
+  animation: fade-in 0.2s ease;
+}
+
+.lobby__error-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--lose-color);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  opacity: 0.7;
+  border-radius: var(--radius-sm);
+  transition: opacity var(--transition);
+}
+.lobby__error-close:hover { opacity: 1; background: rgba(224,92,92,0.15); }
 
 /* ─── Game Page ─────────────────────────────────────────────── */
 .game-page {
@@ -430,17 +460,18 @@ input  { font-family: inherit; }
 }
 
 /* ─── Moves List ────────────────────────────────────────────── */
+/* Bug #31 fix: replaced ambiguous overflow:hidden shorthand with overflow-x:hidden */
 .moves-list {
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 120px;
   max-height: 240px;
-  overflow-y: auto;
 }
 
 .moves-list::-webkit-scrollbar { width: 4px; }
@@ -679,9 +710,11 @@ input  { font-family: inherit; }
   text-align: center;
 }
 
-.overlay__headline--win   { color: var(--win-color); }
-.overlay__headline--lose  { color: var(--lose-color); }
-.overlay__headline--draw  { color: var(--draw-color); }
+.overlay__headline--win      { color: var(--win-color); }
+.overlay__headline--lose     { color: var(--lose-color); }
+.overlay__headline--draw     { color: var(--draw-color); }
+/* Bug #24 fix: neutral headline colour for spectators watching a decisive game */
+.overlay__headline--spectate { color: var(--text-primary); }
 
 .overlay__reason {
   font-size: 15px;

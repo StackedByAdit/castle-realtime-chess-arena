@@ -13,17 +13,18 @@ const App: React.FC = () => {
   const replayData = useGameStore((s) => s.replayData);
   const resetGame = useGameStore((s) => s.resetGame);
 
-  // Initialize socket on app load
+  // Bug #10: useSocket() is called ONLY here (once). LobbyPage and GamePage
+  // now use useSocketActions() which doesn't register a message handler.
   useSocket();
 
-  // Auto-navigate when game starts or spectating
+  // Auto-navigate when game starts or spectating begins.
   useEffect(() => {
     if (status === 'playing' || status === 'spectating') {
       setPage('game');
     }
   }, [status]);
 
-  // Auto-navigate when replay data is loaded
+  // Auto-navigate when replay data is loaded.
   useEffect(() => {
     if (replayData) {
       setPage('replay');
@@ -56,7 +57,9 @@ const App: React.FC = () => {
       </header>
 
       <main className="app-main">
-        {page === 'lobby' && <LobbyPage onNavigateToGame={() => setPage('game')} />}
+        {/* Bug #7/#8: LobbyPage no longer receives onNavigateToGame — navigation
+            is driven by the status watchers above. */}
+        {page === 'lobby' && <LobbyPage />}
         {page === 'game' && <GamePage onReturnToLobby={handleReturnToLobby} />}
         {page === 'replay' && <ReplayPage onBack={handleReturnToLobby} />}
       </main>
