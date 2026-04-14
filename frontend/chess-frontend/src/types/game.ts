@@ -65,4 +65,18 @@ export type GameState = {
   lastError: string | null;
 };
 
+export type GameActions = {
+  setPlayerId: (id: string) => void;
+  setWaiting: () => void;
+  setGameStart: (payload: { color: PlayerColor; opponent: string; gameId: string }) => void;
 
+  setGameUpdate: (payload: {
+    fen: string;
+    turn: string;
+    isGameOver: boolean;
+    whiteTime: number;
+    blackTime: number;
+    moves: Move[];
+  }) => void;
+
+};
