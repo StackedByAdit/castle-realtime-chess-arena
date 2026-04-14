@@ -79,4 +79,11 @@ export type GameActions = {
     moves: Move[];
   }) => void;
 
+  setGameOver: (payload: {
+    winner: string | null;
+    reason: string | null;
+    ratings?: Record<string, number>;
+    pgn?: string;
+  }) => void;
+
 };
