@@ -86,4 +86,13 @@ export type GameActions = {
     pgn?: string;
   }) => void;
 
+  setReconnected: (payload: {
+    fen: string;
+    turn: string;
+    isGameOver: boolean;
+    whiteTime: number;
+    blackTime: number;
+    moves: Move[];
+    playerChat: ChatMessage[];
+  }) => void;
 };
