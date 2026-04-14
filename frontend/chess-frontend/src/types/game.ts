@@ -95,4 +95,25 @@ export type GameActions = {
     moves: Move[];
     playerChat: ChatMessage[];
   }) => void;
+
+  setSpectating: (payload: {
+    state: {
+      fen: string;
+      turn: string;
+      isGameOver: boolean;
+      whiteTime: number;
+      blackTime: number;
+      moves: Move[];
+    };
+    spectatorChat: ChatMessage[];
+    gameId: string;
+  }) => void;
+
+  addPlayerChat: (msg: ChatMessage) => void;
+  addSpectatorChat: (msg: ChatMessage) => void;
+  setReplayData: (data: CompletedGame) => void;
+  resetGame: () => void;
+
+  setError: (msg: string | null) => void;
+  clearError: () => void;
 };
