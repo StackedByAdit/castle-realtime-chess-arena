@@ -9,6 +9,11 @@ class SocketService {
   // Bug #9: Queue messages sent while the socket is reconnecting so they
   // are not silently dropped.
   private pendingMessages: object[] = [];
+  private activePlayerId: string | null = null;
+
+  setActivePlayer(id: string) {
+    this.activePlayerId = id;
+  }
 
   connect(url: string) {
     // Bug #9: Guard against creating duplicate connections on hot-reload or
@@ -47,6 +52,9 @@ class SocketService {
     this.ws.onopen = () => {
       console.log('WebSocket connected');
       this.reconnectAttempts = 0;
+      if (this.activePlayerId) {
+        this.send({ type: 'JOIN', playerId: this.activePlayerId });
+      }
       // Flush any messages queued during the disconnected window.
       const pending = this.pendingMessages.splice(0);
       pending.forEach((msg) => this.ws!.send(JSON.stringify(msg)));

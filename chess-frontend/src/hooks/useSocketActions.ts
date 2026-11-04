@@ -14,6 +14,7 @@ export function useSocketActions() {
 
   const joinGame = (playerId: string) => {
     setPlayerId(playerId);
+    socketService.setActivePlayer(playerId);
     socketService.send({ type: 'JOIN', playerId });
   };
 
