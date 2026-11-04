@@ -18,7 +18,7 @@ export const ReplayPage: React.FC<ReplayPageProps> = ({ onBack }) => {
     const moves = replayData.moves.slice(0, moveIndex);
     for (const move of moves) {
       try {
-        chess.move({ from: move.from, to: move.to });
+        chess.move(move.san);
       } catch {
         break;
       }
