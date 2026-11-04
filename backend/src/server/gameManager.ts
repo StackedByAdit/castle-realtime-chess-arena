@@ -302,16 +302,17 @@ export class GameManager {
     this.waitingPlayers = this.waitingPlayers.filter(id => id !== playerId);
 
     const gameId = this.playerToGame.get(playerId);
-    if (!gameId) return;
+    if (!gameId) return null;
 
     const room = this.games.get(gameId);
-    if (!room) return;
+    if (!room) return null;
 
     const players = room.game.getPlayers();
     const opponent = players.find(p => p.id !== playerId);
 
+    let ratingUpdate: Record<string, number> | null = null;
     if (opponent) {
-      this.updateRatings(players[0]!.id, players[1]!.id, opponent.id);
+      ratingUpdate = this.updateRatings(players[0]!.id, players[1]!.id, opponent.id);
     }
 
     room.game.stopTimer();
@@ -322,6 +323,8 @@ export class GameManager {
     if (opponent) {
       this.playerToGame.delete(opponent.id);
     }
+
+    return ratingUpdate;
   }
 
   private updateRatings(

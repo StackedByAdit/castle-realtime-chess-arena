@@ -330,21 +330,35 @@ wss.on("connection", (socket: WebSocket) => {
 
             const players = gameManager.getPlayersInGame(playerId);
             const opponent = players.find(p => p.id !== playerId);
+            const gameId = gameManager.getGameIdByPlayer(playerId);
+            const spectatorIds = gameId ? gameManager.getSpectatorsInGame(gameId) : [];
 
             if (!opponent) {
                 disconnectTimers.delete(playerId);
                 return;
             }
 
+            const ratingUpdate = gameManager.handleDisconnect(playerId);
+
             playerToSocket.get(opponent.id)?.send(JSON.stringify({
                 type: "GAME_OVER",
                 payload: {
                     winner: opponent.id,
                     reason: "opponent_disconnected",
+                    ratings: ratingUpdate,
                 },
             }));
 
-            gameManager.handleDisconnect(playerId);
+            spectatorIds.forEach((sid) => {
+                spectatorToSocket.get(sid)?.send(JSON.stringify({
+                    type: "GAME_OVER",
+                    payload: {
+                        winner: opponent.id,
+                        reason: "opponent_disconnected",
+                    },
+                }));
+            });
+
             disconnectTimers.delete(playerId);
         }, 30000);
 
