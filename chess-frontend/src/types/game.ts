@@ -105,6 +105,8 @@ export type GameActions = {
     playerChat: ChatMessage[];
   }) => void;
 
+  tickTimer: () => void;
+
   setSpectating: (payload: {
     state: {
       fen: string;

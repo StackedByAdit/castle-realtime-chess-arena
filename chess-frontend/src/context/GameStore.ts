@@ -95,6 +95,14 @@ export const useGameStore = create<GameState & GameActions>((set) => ({
       lastError: null,
     }),
 
+  tickTimer: () =>
+    set((state) => {
+      if (state.status !== 'playing' || state.isGameOver) return state;
+      return state.turn === 'w'
+        ? { whiteTime: Math.max(0, state.whiteTime - 1) }
+        : { blackTime: Math.max(0, state.blackTime - 1) };
+    }),
+
   setSpectating: (payload: {
     state: {
       fen: string;
