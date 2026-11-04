@@ -93,6 +93,9 @@ export type GameActions = {
   }) => void;
 
   setReconnected: (payload: {
+    color: PlayerColor;
+    opponentId: string | null;
+    gameId: string;
     fen: string;
     turn: string;
     isGameOver: boolean;

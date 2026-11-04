@@ -267,7 +267,15 @@ export class GameManager {
     if (!gameId) return null;
     const room = this.games.get(gameId);
     if (!room) return null;
-    return room.game.getState();
+    const state = room.game.getState();
+    const opponent = room.players.find(p => p.id !== playerId);
+    const color = room.game.getPlayers()[0]?.id === playerId ? "w" : "b";
+    return {
+      ...state,
+      gameId,
+      color,
+      opponentId: opponent?.id ?? null,
+    };
   }
 
   getPlayersInGame(playerId: string): Player[] {

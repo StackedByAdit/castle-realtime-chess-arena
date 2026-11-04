@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { socketService } from '../services/socket';
 import { useGameStore } from '../context/GameStore';
-import type { Move, ChatMessage, CompletedGame } from '../types/game';
+import type { Move, ChatMessage, CompletedGame, PlayerColor } from '../types/game';
 
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080';
 
@@ -64,6 +64,9 @@ export function useSocket() {
         case 'RECONNECTED': {
           // Bug #23 fix: properly typed Move[] and ChatMessage[] instead of never[]
           const p = msg.payload as {
+            color: PlayerColor;
+            opponentId: string | null;
+            gameId: string;
             fen: string;
             turn: string;
             isGameOver: boolean;

@@ -81,6 +81,10 @@ export const useGameStore = create<GameState & GameActions>((set) => ({
   setReconnected: (payload) =>
     set({
       status: 'playing',
+      playerColor: payload.color,
+      opponentId: payload.opponentId,
+      gameId: payload.gameId,
+      isSpectator: false,
       fen: payload.fen,
       turn: payload.turn,
       isGameOver: payload.isGameOver,
