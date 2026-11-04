@@ -309,10 +309,13 @@ wss.on("connection", (socket: WebSocket) => {
         const playerId = socketToPlayer.get(socket);
         if (!playerId) return;
 
+        socketToPlayer.delete(socket);
+
+        if (playerToSocket.get(playerId) !== socket) return;
+
         console.log("Player disconnected:", playerId);
 
         playerToSocket.delete(playerId);
-        socketToPlayer.delete(socket);
 
         // Bug #13: Players not in an active game (waiting/idle) are cleaned
         // up immediately with no grace period since there is nothing to reconnect to.
