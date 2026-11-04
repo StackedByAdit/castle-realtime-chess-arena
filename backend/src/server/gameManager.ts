@@ -3,6 +3,7 @@ import type { ChatMessage, CompletedGame, GameRoom, MoveResult, Player } from ".
 
 const DEFAULT_RATING = 400;
 const RATING_FLOOR = 100;  // Bug #11: ratings can no longer go negative
+const MAX_RATING_DIFF = 400;
 
 export class GameManager {
   private games = new Map<string, GameRoom>();
@@ -123,14 +124,16 @@ export class GameManager {
       }
     }
 
-    if (bestIndex !== -1) {
+    if (bestIndex !== -1 && smallestDiff <= MAX_RATING_DIFF) {
       const opponentId = this.waitingPlayers.splice(bestIndex, 1)[0]!;
-      const gameId = this.createGame(opponentId, playerId);
+      const isOpponentWhite = Math.random() < 0.5;
+      const [whiteId, blackId] = isOpponentWhite ? [opponentId, playerId] : [playerId, opponentId];
+      const gameId = this.createGame(whiteId, blackId);
 
       return {
         status: "matched",
         gameId,
-        players: [opponentId, playerId],
+        players: [whiteId, blackId],
       };
     }
 
