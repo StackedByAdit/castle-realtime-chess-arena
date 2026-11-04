@@ -4,6 +4,7 @@ import type { ChatMessage, CompletedGame, GameRoom, MoveResult, Player } from ".
 const DEFAULT_RATING = 400;
 const RATING_FLOOR = 100;  // Bug #11: ratings can no longer go negative
 const MAX_RATING_DIFF = 400;
+const MAX_COMPLETED_GAMES = 100;
 
 export class GameManager {
   private games = new Map<string, GameRoom>();
@@ -52,6 +53,11 @@ export class GameManager {
       // Bug #2: Update ratings once here; socket handler uses the returned
       // ratingUpdate and does NOT call updateRatings a second time.
       const ratingUpdate = this.updateRatings(player1.id, player2.id, winnerId);
+
+      if (this.completedGames.size >= MAX_COMPLETED_GAMES) {
+        const oldestKey = this.completedGames.keys().next().value;
+        if (oldestKey) this.completedGames.delete(oldestKey);
+      }
 
       // Bug #4: Store the PGN string, not the FEN.
       this.completedGames.set(gameId, {
@@ -164,6 +170,11 @@ export class GameManager {
       );
 
       result.ratings = ratingUpdate;
+
+      if (this.completedGames.size >= MAX_COMPLETED_GAMES) {
+        const oldestKey = this.completedGames.keys().next().value;
+        if (oldestKey) this.completedGames.delete(oldestKey);
+      }
 
       this.completedGames.set(gameId, {
         gameId,

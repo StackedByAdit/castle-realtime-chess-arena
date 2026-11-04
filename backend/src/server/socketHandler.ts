@@ -225,7 +225,7 @@ wss.on("connection", (socket: WebSocket) => {
             const playerId = socketToPlayer.get(socket);
             if (!playerId) return;
 
-            const text: string = message.payload?.text?.trim();
+            const text: string = message.payload?.text?.trim().slice(0, 200);
             if (!text) return;
 
             const result = gameManager.sendPlayerChat(playerId, text);
@@ -245,7 +245,7 @@ wss.on("connection", (socket: WebSocket) => {
             const spectatorId = socketToSpectator.get(socket);
             if (!spectatorId) return;
 
-            const text: string = message.payload?.text?.trim();
+            const text: string = message.payload?.text?.trim().slice(0, 200);
             if (!text) return;
 
             const result = gameManager.sendSpectatorChat(spectatorId, text);
