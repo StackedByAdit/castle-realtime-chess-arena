@@ -1,10 +1,36 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
 import { useGameStore } from '../../context/GameStore';
 import { useGame } from '../../hooks/useGame';
 import { useSocketActions } from '../../hooks/useSocketActions';
-import type { Square } from 'react-chessboard/dist/chessboard/types';
+import type { Square, CustomSquareProps, CustomSquareRenderer } from 'react-chessboard/dist/chessboard/types';
+
+const CustomSquare = React.forwardRef<HTMLDivElement, CustomSquareProps>(
+  ({ children, style }, ref) => {
+    const dotColor = (style as Record<string, unknown>).dotColor as string | undefined;
+    return (
+      <div ref={ref} style={{ ...style, position: 'relative' }}>
+        {children}
+        {dotColor && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              margin: 'auto',
+              width: '28%',
+              height: '28%',
+              borderRadius: '50%',
+              backgroundColor: dotColor,
+              pointerEvents: 'none',
+              zIndex: 10,
+            }}
+          />
+        )}
+      </div>
+    );
+  }
+);
 
 /**
  * Bug #14: Pawn promotion is now handled via onPromotionPieceSelect, which
@@ -22,9 +48,56 @@ export const ChessBoard: React.FC = () => {
   const { playerColor, isMyTurn, isSpectator, isGameOver } = useGame();
   const { makeMove } = useSocketActions();
 
+  const [moveSquares, setMoveSquares] = useState<Record<string, { dotColor: string }>>({});
+  const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
+
+  useEffect(() => {
+    setMoveSquares({});
+    setSelectedSquare(null);
+  }, [fen]);
+
+  const showLegalMoves = (square: Square) => {
+    if (!isMyTurn) return;
+    const moves = new Chess(fen).moves({ square, verbose: true });
+    if (!moves.length) {
+      setMoveSquares({});
+      setSelectedSquare(null);
+      return;
+    }
+    const styles: Record<string, { dotColor: string }> = {};
+    moves.forEach((m) => {
+      styles[m.to] = {
+        dotColor: m.captured ? 'rgba(239, 68, 68, 0.55)' : 'rgba(0, 0, 0, 0.25)',
+      };
+    });
+    setMoveSquares(styles);
+    setSelectedSquare(square);
+  };
+
+  const getCheckSquare = () => {
+    const chess = new Chess(fen);
+    if (!chess.inCheck()) return null;
+    const isMate = chess.isCheckmate();
+    const king = chess.board().flat().find((p) => p?.type === 'k' && p?.color === chess.turn());
+    if (!king) return null;
+    return {
+      square: king.square as Square,
+      style: {
+        backgroundColor: isMate ? 'rgba(220, 38, 38, 0.85)' : 'rgba(239, 68, 68, 0.45)',
+      },
+    };
+  };
+
+  const checkSquare = getCheckSquare();
+  const customStyles = checkSquare
+    ? { ...moveSquares, [checkSquare.square]: { ...checkSquare.style, ...moveSquares[checkSquare.square] } }
+    : moveSquares;
+
   const boardOrientation = isSpectator ? 'white' : playerColor === 'b' ? 'black' : 'white';
 
   const onDrop = (sourceSquare: Square, targetSquare: Square): boolean => {
+    setMoveSquares({});
+    setSelectedSquare(null);
     if (!isMyTurn) return false;
 
     // Bug #15: Validate the move locally before sending to server.
@@ -59,6 +132,8 @@ export const ChessBoard: React.FC = () => {
     fromSquare?: Square,
     toSquare?: Square
   ): boolean => {
+    setMoveSquares({});
+    setSelectedSquare(null);
     if (!piece || !fromSquare || !toSquare || !isMyTurn) return false;
     // piece is formatted as e.g. 'wQ', 'bR' — extract the letter and lowercase it.
     const promotionPiece = piece[1]?.toLowerCase() ?? 'q';
@@ -71,6 +146,19 @@ export const ChessBoard: React.FC = () => {
       <Chessboard
         position={fen}
         onPieceDrop={onDrop}
+        onPieceDragBegin={(_piece, square) => showLegalMoves(square)}
+        onPieceDragEnd={() => {
+          setMoveSquares({});
+          setSelectedSquare(null);
+        }}
+        onSquareClick={(square) => {
+          if (selectedSquare) {
+            if (onDrop(selectedSquare, square)) return;
+          }
+          showLegalMoves(square);
+        }}
+        customSquare={CustomSquare as unknown as CustomSquareRenderer}
+        customSquareStyles={customStyles}
         onPromotionPieceSelect={onPromotionPieceSelect}
         promotionDialogVariant="modal"
         boardOrientation={boardOrientation}
