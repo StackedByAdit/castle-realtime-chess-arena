@@ -12,10 +12,14 @@ const disconnectTimers = new Map<string, NodeJS.Timeout>();
 const spectatorToSocket = new Map<string, WebSocket>();
 const socketToSpectator = new Map<WebSocket, string>();
 
+// Bug fixes #2, #3: New signature supplies ratingUpdate (so clients receive
+// their post-timeout ratings) and spectatorIds captured before room deletion
+// (so spectators are still notified even though the room is gone).
 gameManager.setTimeoutHandler((gameId, winnerId, reason, ratingUpdate, spectatorIds) => {
     const replay = gameManager.getReplay(gameId);
     if (!replay) return;
 
+    // Notify both players — include ratingUpdate (was null before, bug #2)
     replay.players.forEach((player) => {
         const client = playerToSocket.get(player.id);
         client?.send(JSON.stringify({
@@ -28,6 +32,7 @@ gameManager.setTimeoutHandler((gameId, winnerId, reason, ratingUpdate, spectator
         }));
     });
 
+    // Notify spectators using the pre-captured list (bug #3 — room already deleted)
     spectatorIds.forEach((spectatorId) => {
         const client = spectatorToSocket.get(spectatorId);
         client?.send(JSON.stringify({
@@ -50,6 +55,7 @@ wss.on("connection", (socket: WebSocket) => {
             return;
         }
 
+        // ── JOIN ─────────────────────────────────────────────────────────
         if (message.type === "JOIN") {
             const playerId: string = message.playerId;
 
@@ -111,6 +117,7 @@ wss.on("connection", (socket: WebSocket) => {
             }
         }
 
+        // ── SPECTATE ─────────────────────────────────────────────────────
         if (message.type === "SPECTATE") {
             const spectatorId: string = message.spectatorId;
             const gameId: string = message.gameId;
@@ -128,6 +135,7 @@ wss.on("connection", (socket: WebSocket) => {
                 return;
             }
 
+            // Bug #5: Include gameId in the payload so the client can store it.
             socket.send(JSON.stringify({
                 type: "SPECTATING",
                 payload: {
@@ -138,6 +146,7 @@ wss.on("connection", (socket: WebSocket) => {
             }));
         }
 
+        // ── MOVE ─────────────────────────────────────────────────────────
         if (message.type === "MOVE") {
             const playerId = socketToPlayer.get(socket);
             if (!playerId) return;
@@ -161,6 +170,7 @@ wss.on("connection", (socket: WebSocket) => {
 
             const s = result;
 
+            // Bug #6: Broadcast moves so the live move list stays up-to-date.
             const updatePayload = {
                 fen: s.fen,
                 turn: s.turn,
@@ -210,11 +220,12 @@ wss.on("connection", (socket: WebSocket) => {
             }
         }
 
+        // ── PLAYER_CHAT ───────────────────────────────────────────────────
         if (message.type === "PLAYER_CHAT") {
             const playerId = socketToPlayer.get(socket);
             if (!playerId) return;
 
-            const text: string = message.payload?.text?.trim();
+            const text: string = message.payload?.text?.trim().slice(0, 200);
             if (!text) return;
 
             const result = gameManager.sendPlayerChat(playerId, text);
@@ -229,11 +240,12 @@ wss.on("connection", (socket: WebSocket) => {
             });
         }
 
+        // ── SPECTATOR_CHAT ────────────────────────────────────────────────
         if (message.type === "SPECTATOR_CHAT") {
             const spectatorId = socketToSpectator.get(socket);
             if (!spectatorId) return;
 
-            const text: string = message.payload?.text?.trim();
+            const text: string = message.payload?.text?.trim().slice(0, 200);
             if (!text) return;
 
             const result = gameManager.sendSpectatorChat(spectatorId, text);
@@ -248,6 +260,7 @@ wss.on("connection", (socket: WebSocket) => {
             });
         }
 
+        // ── GET_STATE ─────────────────────────────────────────────────────
         if (message.type === "GET_STATE") {
             const playerId = socketToPlayer.get(socket);
             if (!playerId) return;
@@ -260,10 +273,13 @@ wss.on("connection", (socket: WebSocket) => {
             }));
         }
 
+        // ── GET_REPLAY ────────────────────────────────────────────────────
         if (message.type === "GET_REPLAY") {
             const gameId: string = message.payload?.gameId;
             const game = gameManager.getReplay(gameId);
 
+            // Bug #16: Send an explicit ERROR when a replay is not found so
+            // the client can display feedback instead of silently doing nothing.
             if (!game) {
                 socket.send(JSON.stringify({
                     type: "ERROR",
@@ -280,6 +296,7 @@ wss.on("connection", (socket: WebSocket) => {
     });
 
     socket.on("close", () => {
+        // ── Spectator cleanup ─────────────────────────────────────────────
         const spectatorId = socketToSpectator.get(socket);
         if (spectatorId) {
             spectatorToSocket.delete(spectatorId);
@@ -288,14 +305,20 @@ wss.on("connection", (socket: WebSocket) => {
             return;
         }
 
+        // ── Player cleanup ────────────────────────────────────────────────
         const playerId = socketToPlayer.get(socket);
         if (!playerId) return;
+
+        socketToPlayer.delete(socket);
+
+        if (playerToSocket.get(playerId) !== socket) return;
 
         console.log("Player disconnected:", playerId);
 
         playerToSocket.delete(playerId);
-        socketToPlayer.delete(socket);
 
+        // Bug #13: Players not in an active game (waiting/idle) are cleaned
+        // up immediately with no grace period since there is nothing to reconnect to.
         const isInGame = gameManager.getGameIdByPlayer(playerId) !== null;
         if (!isInGame) {
             gameManager.handleDisconnect(playerId);
@@ -307,21 +330,35 @@ wss.on("connection", (socket: WebSocket) => {
 
             const players = gameManager.getPlayersInGame(playerId);
             const opponent = players.find(p => p.id !== playerId);
+            const gameId = gameManager.getGameIdByPlayer(playerId);
+            const spectatorIds = gameId ? gameManager.getSpectatorsInGame(gameId) : [];
 
             if (!opponent) {
                 disconnectTimers.delete(playerId);
                 return;
             }
 
+            const ratingUpdate = gameManager.handleDisconnect(playerId);
+
             playerToSocket.get(opponent.id)?.send(JSON.stringify({
                 type: "GAME_OVER",
                 payload: {
                     winner: opponent.id,
                     reason: "opponent_disconnected",
+                    ratings: ratingUpdate,
                 },
             }));
 
-            gameManager.handleDisconnect(playerId);
+            spectatorIds.forEach((sid) => {
+                spectatorToSocket.get(sid)?.send(JSON.stringify({
+                    type: "GAME_OVER",
+                    payload: {
+                        winner: opponent.id,
+                        reason: "opponent_disconnected",
+                    },
+                }));
+            });
+
             disconnectTimers.delete(playerId);
         }, 30000);
 

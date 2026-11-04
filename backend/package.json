@@ -5,19 +5,20 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "build" : "tsc -b",
-    "dev" : "tsc -b && node ./dist/server/socketHandler.js",
+    "build": "tsc -b",
+    "dev": "tsc -b && node ./dist/server/socketHandler.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@types/express": "^5.0.6",
     "chess.js": "^1.4.0",
-    "express": "^5.2.1"
+    "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.14",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.2"
   }

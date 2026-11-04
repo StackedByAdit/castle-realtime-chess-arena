@@ -1,5 +1,5 @@
 import { Chess } from "chess.js";
-import type { MoveResult, Player } from "./types.js";
+import type { MoveResult, Move, Player } from "./types.js";
 
 export class Game {
 
@@ -12,7 +12,18 @@ export class Game {
     private lastMoveTime = Date.now();
     private timerInterval: NodeJS.Timeout | null = null;
 
-    constructor(playerWhite: Player, playerBlack: Player, onTimeout: (winnerId: string, loserId: string) => void) {
+    // Bug fixes applied here:
+    //  #1  — Timer now checks BOTH colours; winner direction was also
+    //         backwards in the original (e.g. White's clock expiring passed
+    //         playerWhite.id as winnerId — Black should win).
+    //  #4  — onTimeout callback signature simplified to (winnerId: string).
+    //  #6  — makeMove / getState now return `moves` so the play loop can
+    //         broadcast the full move list on every update.
+    constructor(
+        playerWhite: Player,
+        playerBlack: Player,
+        onTimeout: (winnerId: string) => void
+    ) {
         this.playerWhite = playerWhite;
         this.playerBlack = playerBlack;
         this.chess = new Chess();
@@ -29,9 +40,15 @@ export class Game {
             const turn = this.chess.turn();
 
             if (turn === "w" && this.whiteTime - elapsed <= 0) {
+                // White ran out of time → Black wins
                 this.whiteTime = 0;
                 this.stopTimer();
-                onTimeout(this.playerWhite.id, this.playerBlack.id);
+                onTimeout(this.playerBlack.id);
+            } else if (turn === "b" && this.blackTime - elapsed <= 0) {
+                // Black ran out of time → White wins
+                this.blackTime = 0;
+                this.stopTimer();
+                onTimeout(this.playerWhite.id);
             }
         }, 1000);
     }
@@ -43,11 +60,23 @@ export class Game {
         }
     }
 
-    public getMoves() {
-        return this.chess.history({ verbose: true });
+    /** Maps chess.js verbose history to our leaner Move type. */
+    public getMoves(): Move[] {
+        return this.chess.history({ verbose: true }).map(m => ({
+            color: m.color,
+            from: m.from,
+            to: m.to,
+            piece: m.piece,
+            san: m.san,
+        }));
     }
 
-    public makeMove(playerId: string, move: string) : MoveResult {
+    /** Returns the full PGN string for the current game. */
+    public getPgn(): string {
+        return this.chess.pgn();
+    }
+
+    public makeMove(playerId: string, move: string): MoveResult {
 
         if (this.chess.isGameOver()) {
             return { success: false, message: "Game already finished" };
@@ -73,6 +102,7 @@ export class Game {
 
         this.lastMoveTime = now;
 
+        // Check for move-boundary timeout (player submitted a move after time expired)
         let winner: string | null = null;
         let reason: string | null = null;
 
@@ -85,7 +115,7 @@ export class Game {
         }
 
         if (winner) {
-            this.stopTimer(); 
+            this.stopTimer();
             return {
                 success: true,
                 isGameOver: true,
@@ -95,7 +125,8 @@ export class Game {
                 turn: this.chess.turn(),
                 whiteTime: this.whiteTime,
                 blackTime: this.blackTime,
-                pgn: this.chess.pgn()
+                pgn: this.chess.pgn(),
+                moves: this.getMoves(),
             };
         }
 
@@ -105,7 +136,7 @@ export class Game {
             return { success: false, message: "Invalid move" };
         }
 
-        let isGameOver = this.chess.isGameOver() || winner !== null;
+        const isGameOver = this.chess.isGameOver();
 
         if (this.chess.isCheckmate()) {
             winner =
@@ -136,7 +167,8 @@ export class Game {
             reason,
             whiteTime: this.whiteTime,
             blackTime: this.blackTime,
-            pgn: this.chess.pgn()
+            pgn: this.chess.pgn(),
+            moves: this.getMoves(),
         };
     }
 
@@ -151,7 +183,7 @@ export class Game {
             timeStamp: this.time,
             moves: this.getMoves(),
             whiteTime: turn === "w" ? Math.max(0, this.whiteTime - elapsed) : this.whiteTime,
-            blackTime: turn === "b" ? Math.max(0, this.blackTime - elapsed) : this.blackTime
+            blackTime: turn === "b" ? Math.max(0, this.blackTime - elapsed) : this.blackTime,
         };
     }
 

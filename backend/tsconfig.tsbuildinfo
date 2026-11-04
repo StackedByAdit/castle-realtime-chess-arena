@@ -1,1 +1,1 @@
-{"root":["./src/server/game.ts","./src/server/gamemanager.ts","./src/server/sockethandler.ts","./src/server/test.ts"],"version":"6.0.2"}
+{"root":["./src/server/game.ts","./src/server/gamemanager.ts","./src/server/sockethandler.ts","./src/server/types.ts"],"version":"6.0.2"}

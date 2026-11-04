@@ -2,6 +2,9 @@ import { Game } from "./Game.js"
 import type { ChatMessage, CompletedGame, GameRoom, MoveResult, Player } from "./types.js";
 
 const DEFAULT_RATING = 400;
+const RATING_FLOOR = 100;  // Bug #11: ratings can no longer go negative
+const MAX_RATING_DIFF = 400;
+const MAX_COMPLETED_GAMES = 100;
 
 export class GameManager {
   private games = new Map<string, GameRoom>();
@@ -9,12 +12,28 @@ export class GameManager {
   private spectatorToGame = new Map<string, string>();
   private waitingPlayers: string[] = [];
   private players = new Map<string, Player>();
-
   private completedGames = new Map<string, CompletedGame>();
 
-  private onTimeout: ((gameId: string, winnerId: string, reason: string) => void) | null = null;
+  // Bug fixes #2, #3: onTimeout now receives ratingUpdate and the
+  // spectatorIds list captured *before* the room is deleted, so the
+  // socket handler can reliably notify both players and spectators.
+  private onTimeout: ((
+    gameId: string,
+    winnerId: string,
+    reason: string,
+    ratingUpdate: Record<string, number>,
+    spectatorIds: string[]
+  ) => void) | null = null;
 
-  setTimeoutHandler(handler: (gameId: string, winnerId: string, reason: string) => void) {
+  setTimeoutHandler(
+    handler: (
+      gameId: string,
+      winnerId: string,
+      reason: string,
+      ratingUpdate: Record<string, number>,
+      spectatorIds: string[]
+    ) => void
+  ) {
     this.onTimeout = handler;
   }
 
@@ -24,21 +43,33 @@ export class GameManager {
     const player1 = this.players.get(player1Id)!;
     const player2 = this.players.get(player2Id)!;
 
-    const game = new Game(player1, player2, (winnerId, loserId) => {
+    const game = new Game(player1, player2, (winnerId: string) => {
       const room = this.games.get(gameId);
 
-      this.updateRatings(player1.id, player2.id, winnerId);
+      // Bug #3: Capture spectators BEFORE deleting the room so the
+      // socket handler can still notify them after cleanup.
+      const spectatorIds = room ? [...room.spectators] : [];
 
+      // Bug #2: Update ratings once here; socket handler uses the returned
+      // ratingUpdate and does NOT call updateRatings a second time.
+      const ratingUpdate = this.updateRatings(player1.id, player2.id, winnerId);
+
+      if (this.completedGames.size >= MAX_COMPLETED_GAMES) {
+        const oldestKey = this.completedGames.keys().next().value;
+        if (oldestKey) this.completedGames.delete(oldestKey);
+      }
+
+      // Bug #4: Store the PGN string, not the FEN.
       this.completedGames.set(gameId, {
         gameId,
         players: game.getPlayers(),
-        pgn: game.getState().fen,
+        pgn: game.getPgn(),
         moves: game.getMoves(),
         createdAt: Date.now(),
         result: {
           winner: winnerId,
-          reason: "timeout"
-        }
+          reason: "timeout",
+        },
       });
 
       if (room) {
@@ -49,7 +80,7 @@ export class GameManager {
       this.playerToGame.delete(player1.id);
       this.playerToGame.delete(player2.id);
 
-      this.onTimeout?.(gameId, winnerId, "timeout");
+      this.onTimeout?.(gameId, winnerId, "timeout", ratingUpdate, spectatorIds);
     });
 
     const room: GameRoom = {
@@ -57,7 +88,7 @@ export class GameManager {
       players: [player1, player2],
       spectators: [],
       playerChat: [],
-      spectatorChat: []
+      spectatorChat: [],
     };
 
     this.games.set(gameId, room);
@@ -68,10 +99,9 @@ export class GameManager {
   }
 
   addPlayer(playerId: string) {
-
     this.players.set(playerId, this.players.get(playerId) || {
       id: playerId,
-      rating: DEFAULT_RATING
+      rating: DEFAULT_RATING,
     });
 
     if (this.waitingPlayers.includes(playerId)) {
@@ -92,7 +122,6 @@ export class GameManager {
       if (!opponentId) continue;
 
       const opponent = this.players.get(opponentId)!;
-
       const diff = Math.abs(player.rating - opponent.rating);
 
       if (diff < smallestDiff) {
@@ -101,32 +130,30 @@ export class GameManager {
       }
     }
 
-    if (bestIndex !== -1) {
+    if (bestIndex !== -1 && smallestDiff <= MAX_RATING_DIFF) {
       const opponentId = this.waitingPlayers.splice(bestIndex, 1)[0]!;
-
-      const gameId = this.createGame(opponentId, playerId);
+      const isOpponentWhite = Math.random() < 0.5;
+      const [whiteId, blackId] = isOpponentWhite ? [opponentId, playerId] : [playerId, opponentId];
+      const gameId = this.createGame(whiteId, blackId);
 
       return {
         status: "matched",
         gameId,
-        players: [opponentId, playerId]
+        players: [whiteId, blackId],
       };
     }
 
     this.waitingPlayers.push(playerId);
-
     return { status: "waiting" };
   }
 
   handleMove(playerId: string, move: string): MoveResult {
     const gameId = this.playerToGame.get(playerId);
-
     if (!gameId) {
       return { success: false, message: "Game not found" };
     }
 
     const room = this.games.get(gameId);
-
     if (!room) {
       return { success: false, message: "Game not found" };
     }
@@ -143,6 +170,12 @@ export class GameManager {
       );
 
       result.ratings = ratingUpdate;
+
+      if (this.completedGames.size >= MAX_COMPLETED_GAMES) {
+        const oldestKey = this.completedGames.keys().next().value;
+        if (oldestKey) this.completedGames.delete(oldestKey);
+      }
+
       this.completedGames.set(gameId, {
         gameId,
         players,
@@ -151,12 +184,11 @@ export class GameManager {
         createdAt: Date.now(),
         result: {
           winner: result.winner,
-          reason: result.reason
-        }
+          reason: result.reason,
+        },
       });
 
       room.game.stopTimer();
-
       room.spectators.forEach(sid => this.spectatorToGame.delete(sid));
 
       this.games.delete(gameId);
@@ -171,7 +203,6 @@ export class GameManager {
     const room = this.games.get(gameId);
     if (!room) return null;
 
-    // don't add the same spectator twice
     if (!room.spectators.includes(spectatorId)) {
       room.spectators.push(spectatorId);
       this.spectatorToGame.set(spectatorId, gameId);
@@ -179,7 +210,7 @@ export class GameManager {
 
     return {
       state: room.game.getState(),
-      spectatorChat: room.spectatorChat  
+      spectatorChat: room.spectatorChat,
     };
   }
 
@@ -215,7 +246,7 @@ export class GameManager {
     const message: ChatMessage = {
       senderId,
       text,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
     room.playerChat.push(message);
@@ -232,7 +263,7 @@ export class GameManager {
     const message: ChatMessage = {
       senderId,
       text,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
     room.spectatorChat.push(message);
@@ -242,28 +273,30 @@ export class GameManager {
   getPlayerChat(playerId: string): ChatMessage[] {
     const gameId = this.playerToGame.get(playerId);
     if (!gameId) return [];
-
     return this.games.get(gameId)?.playerChat ?? [];
   }
-
 
   getGameState(playerId: string) {
     const gameId = this.playerToGame.get(playerId);
     if (!gameId) return null;
-
     const room = this.games.get(gameId);
     if (!room) return null;
-
-    return room.game.getState();
+    const state = room.game.getState();
+    const opponent = room.players.find(p => p.id !== playerId);
+    const color = room.game.getPlayers()[0]?.id === playerId ? "w" : "b";
+    return {
+      ...state,
+      gameId,
+      color,
+      opponentId: opponent?.id ?? null,
+    };
   }
 
   getPlayersInGame(playerId: string): Player[] {
     const gameId = this.playerToGame.get(playerId);
     if (!gameId) return [];
-
     const room = this.games.get(gameId);
     if (!room) return [];
-
     return room.game.getPlayers();
   }
 
@@ -278,21 +311,25 @@ export class GameManager {
   }
 
   handleDisconnect(playerId: string) {
+    // Bug #13: Always purge from the waiting queue so a disconnected
+    // player is never matched against again.
+    this.waitingPlayers = this.waitingPlayers.filter(id => id !== playerId);
+
     const gameId = this.playerToGame.get(playerId);
-    if (!gameId) return;
+    if (!gameId) return null;
 
     const room = this.games.get(gameId);
-    if (!room) return;
+    if (!room) return null;
 
     const players = room.game.getPlayers();
     const opponent = players.find(p => p.id !== playerId);
 
+    let ratingUpdate: Record<string, number> | null = null;
     if (opponent) {
-      this.updateRatings(players[0]!.id, players[1]!.id, opponent.id);
+      ratingUpdate = this.updateRatings(players[0]!.id, players[1]!.id, opponent.id);
     }
 
-    room.game.stopTimer(); 
-
+    room.game.stopTimer();
     room.spectators.forEach(sid => this.spectatorToGame.delete(sid));
 
     this.games.delete(gameId);
@@ -300,6 +337,8 @@ export class GameManager {
     if (opponent) {
       this.playerToGame.delete(opponent.id);
     }
+
+    return ratingUpdate;
   }
 
   private updateRatings(
@@ -332,15 +371,16 @@ export class GameManager {
       score2 = 0.5;
     }
 
-    const newR1 = Math.round(r1 + K * (score1 - expected1));
-    const newR2 = Math.round(r2 + K * (score2 - expected2));
+    // Bug #11: Enforce a rating floor so ratings never go negative.
+    const newR1 = Math.max(RATING_FLOOR, Math.round(r1 + K * (score1 - expected1)));
+    const newR2 = Math.max(RATING_FLOOR, Math.round(r2 + K * (score2 - expected2)));
 
     p1.rating = newR1;
     p2.rating = newR2;
 
     return {
       [player1Id]: newR1,
-      [player2Id]: newR2
+      [player2Id]: newR2,
     };
   }
 
