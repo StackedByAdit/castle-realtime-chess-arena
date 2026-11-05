@@ -4,17 +4,15 @@ import { Timer } from '../game/Timer';
 import { GameInfo } from '../game/GameInfo';
 import { MovesList } from '../game/MovesList';
 import { ChatBox } from '../chat/ChatBox';
-import { GameOverlay } from '../game/GameOverlay';
 import { useGameStore } from '../../context/GameStore';
 import { useGame } from '../../hooks/useGame';
 
 interface GameLayoutProps {
   onSendChat: (text: string) => void;
-  onReturnToLobby: () => void;
+  onReturnToLobby?: () => void;
 }
 
-export const GameLayout: React.FC<GameLayoutProps> = ({ onSendChat, onReturnToLobby }) => {
-  const isGameOver = useGameStore((s) => s.isGameOver);
+export const GameLayout: React.FC<GameLayoutProps> = ({ onSendChat }) => {
   const whiteTime = useGameStore((s) => s.whiteTime);
   const blackTime = useGameStore((s) => s.blackTime);
   const turn = useGameStore((s) => s.turn);
@@ -38,8 +36,6 @@ export const GameLayout: React.FC<GameLayoutProps> = ({ onSendChat, onReturnToLo
 
   return (
     <div className="game-layout">
-      {isGameOver && <GameOverlay onReturnToLobby={onReturnToLobby} />}
-
       <div className="game-layout__board-col">
         <Timer
           seconds={topColor === 'w' ? whiteTime : blackTime}
